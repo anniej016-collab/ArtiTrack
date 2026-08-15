@@ -5,6 +5,9 @@ import { StatusToggleButton } from "@/components/StatusToggleButton";
 import { ListenedToggle } from "@/components/ListenedToggle";
 import { formatDate, releaseTypeLabels } from "@/lib/format";
 
+// Always read live data, and keep the database out of the build step.
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const [activeArtists, pausedArtists, toListen, recentlyListened] =
     await Promise.all([
