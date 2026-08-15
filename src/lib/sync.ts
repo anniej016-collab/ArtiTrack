@@ -17,6 +17,9 @@ export type SyncResult = {
  * who has followed a band for years has already heard those records, and putting
  * the whole discography in the To listen queue would bury genuinely new releases.
  * Later syncs pass false, so anything newly discovered surfaces as unlistened.
+ *
+ * Note that this marks them listened without a date. The import happened today;
+ * the listening did not, and inventing a date would be wrong.
  */
 export async function persistReleases(
   artistId: string,
@@ -46,10 +49,11 @@ export async function persistReleases(
         type: release.type,
         releaseDate: release.releaseDate,
         coverUrl: release.coverUrl,
-        listenedAt: markListened ? new Date() : null,
+        listened: markListened,
+        listenedAt: null,
       },
-      // Refresh metadata that can change upstream, but never touch listenedAt:
-      // that is the user's own record, not the provider's.
+      // Refresh metadata that can change upstream, but never touch the listened
+      // fields: those are the user's own record, not the provider's.
       update: {
         title: release.title,
         type: release.type,

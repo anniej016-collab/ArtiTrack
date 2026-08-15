@@ -22,6 +22,11 @@ When you add an artist, **"Heard already" is ticked by default** so their existi
 catalogue does not flood the To listen queue. Releases found by later syncs arrive
 unlistened, which is what makes the queue mean "new since I started following".
 
+Being listened to and *when* you listened are stored separately. An imported back
+catalogue is marked listened with **no date**, because the date of the import says
+nothing about when the music was actually heard. Only pressing the button records a
+date, so "Recently listened" shows genuine recent listens rather than an import.
+
 ## Deploying to Vercel
 
 1. Push this branch to GitHub (already done).
@@ -71,8 +76,11 @@ Open [http://localhost:3000](http://localhost:3000).
 - `Artist` — name, follow `status` (`ACTIVE` / `PAUSED`), `pausedAt`, plus `source` /
   `externalId` identifying the provider record and `lastSyncedAt`.
 - `Release` — belongs to an artist; `title`, `type` (`ALBUM`/`EP`/`SINGLE`/`OTHER`),
-  `releaseDate`, `listenedAt` (null means not listened yet), and `externalId`, which is
-  what makes re-syncing idempotent. Hand-entered releases have a null `externalId`.
+  `releaseDate`, `coverUrl`, and `externalId`, which is what makes re-syncing
+  idempotent. Hand-entered releases have a null `externalId`.
+- Listening state is `listened` (boolean) plus an optional `listenedAt`. `listened` with
+  a null `listenedAt` means "heard, date unknown" — the state an imported back catalogue
+  lands in.
 
 Pausing an artist only changes `Artist.status`. It never deletes or alters releases, and
 `syncArtist` refuses to run for a paused artist.

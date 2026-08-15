@@ -22,11 +22,13 @@ export default async function Home() {
         orderBy: { name: "asc" },
       }),
       prisma.release.findMany({
-        where: { listenedAt: null, artist: { status: "ACTIVE" } },
+        where: { listened: false, artist: { status: "ACTIVE" } },
         orderBy: { releaseDate: "desc" },
         take: 15,
         include: { artist: true },
       }),
+      // Only releases marked by hand, which is what carries a date. An imported
+      // back catalogue is listened but undated, and was never "recent".
       prisma.release.findMany({
         where: { listenedAt: { not: null }, artist: { status: "ACTIVE" } },
         orderBy: { listenedAt: "desc" },
@@ -90,7 +92,7 @@ export default async function Home() {
                     {formatDate(release.releaseDate)}
                   </p>
                 </div>
-                <ListenedToggle releaseId={release.id} listened={false} />
+                <ListenedToggle releaseId={release.id} listened={release.listened} />
               </li>
             ))}
           </ul>
@@ -121,7 +123,7 @@ export default async function Home() {
                     {formatDate(release.releaseDate)}
                   </p>
                 </div>
-                <ListenedToggle releaseId={release.id} listened />
+                <ListenedToggle releaseId={release.id} listened={release.listened} />
               </li>
             ))}
           </ul>

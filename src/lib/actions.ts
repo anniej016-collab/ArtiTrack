@@ -65,7 +65,9 @@ export async function addRelease(formData: FormData) {
 export async function setReleaseListened(releaseId: string, listened: boolean) {
   const release = await prisma.release.update({
     where: { id: releaseId },
-    data: { listenedAt: listened ? new Date() : null },
+    // Marking something now is a real, dated event, unlike an imported back
+    // catalogue. Un-marking clears the date along with the flag.
+    data: { listened, listenedAt: listened ? new Date() : null },
     select: { artistId: true },
   });
 

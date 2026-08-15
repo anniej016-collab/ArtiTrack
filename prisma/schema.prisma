@@ -55,7 +55,10 @@ model Release {
   coverUrl    String?
   createdAt   DateTime    @default(now())
 
-  // Null means you haven't listened to this yet.
+  // Whether you've heard it, kept separate from when. A back catalogue imported
+  // with "Heard already" is listened with no date, because the import date says
+  // nothing about when it was actually heard.
+  listened   Boolean   @default(false)
   listenedAt DateTime?
 
   // Provider id, so re-syncing updates a release instead of duplicating it.
@@ -65,5 +68,5 @@ model Release {
   @@unique([artistId, externalId])
   @@index([artistId])
   @@index([releaseDate])
-  @@index([listenedAt])
+  @@index([listened])
 }
