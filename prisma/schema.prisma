@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 enum FollowStatus {
@@ -50,6 +50,10 @@ model Release {
   notes       String?
   createdAt   DateTime    @default(now())
 
+  // Null means you haven't listened to this yet.
+  listenedAt DateTime?
+
   @@index([artistId])
   @@index([releaseDate])
+  @@index([listenedAt])
 }

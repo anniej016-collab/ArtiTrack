@@ -2,25 +2,33 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { AddArtistForm } from "@/components/AddArtistForm";
 import { StatusToggleButton } from "@/components/StatusToggleButton";
+import { ListenedToggle } from "@/components/ListenedToggle";
 import { formatDate, releaseTypeLabels } from "@/lib/format";
 
 export default async function Home() {
-  const [activeArtists, pausedArtists, recentReleases] = await Promise.all([
-    prisma.artist.findMany({
-      where: { status: "ACTIVE" },
-      orderBy: { name: "asc" },
-    }),
-    prisma.artist.findMany({
-      where: { status: "PAUSED" },
-      orderBy: { name: "asc" },
-    }),
-    prisma.release.findMany({
-      where: { artist: { status: "ACTIVE" } },
-      orderBy: { releaseDate: "desc" },
-      take: 10,
-      include: { artist: true },
-    }),
-  ]);
+  const [activeArtists, pausedArtists, toListen, recentlyListened] =
+    await Promise.all([
+      prisma.artist.findMany({
+        where: { status: "ACTIVE" },
+        orderBy: { name: "asc" },
+      }),
+      prisma.artist.findMany({
+        where: { status: "PAUSED" },
+        orderBy: { name: "asc" },
+      }),
+      prisma.release.findMany({
+        where: { listenedAt: null, artist: { status: "ACTIVE" } },
+        orderBy: { releaseDate: "desc" },
+        take: 15,
+        include: { artist: true },
+      }),
+      prisma.release.findMany({
+        where: { listenedAt: { not: null }, artist: { status: "ACTIVE" } },
+        orderBy: { listenedAt: "desc" },
+        take: 5,
+        include: { artist: true },
+      }),
+    ]);
 
   return (
     <div className="flex flex-col gap-10">
@@ -36,34 +44,69 @@ export default async function Home() {
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Recent releases from artists you follow
+          To listen ({toListen.length})
         </h2>
-        {recentReleases.length === 0 ? (
+        {toListen.length === 0 ? (
           <p className="text-sm text-zinc-500">
-            Nothing yet — log a release from an artist&apos;s page once you&apos;ve added one.
+            Nothing waiting — you&apos;re all caught up on the artists you follow.
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-black/10 rounded-lg border border-black/10 dark:divide-white/10 dark:border-white/10">
-            {recentReleases.map((release) => (
-              <li key={release.id} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium">{release.title}</p>
-                  <p className="text-xs text-zinc-500">
-                    {release.artist.name} · {releaseTypeLabels[release.type]} ·{" "}
+            {toListen.map((release) => (
+              <li
+                key={release.id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{release.title}</p>
+                  <p className="truncate text-xs text-zinc-500">
+                    <Link
+                      href={`/artists/${release.artistId}`}
+                      className="hover:underline"
+                    >
+                      {release.artist.name}
+                    </Link>{" "}
+                    · {releaseTypeLabels[release.type]} ·{" "}
                     {formatDate(release.releaseDate)}
                   </p>
                 </div>
-                <Link
-                  href={`/artists/${release.artistId}`}
-                  className="text-xs font-medium text-zinc-500 hover:text-foreground"
-                >
-                  View
-                </Link>
+                <ListenedToggle releaseId={release.id} listened={false} />
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {recentlyListened.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Recently listened
+          </h2>
+          <ul className="flex flex-col divide-y divide-black/10 rounded-lg border border-black/10 dark:divide-white/10 dark:border-white/10">
+            {recentlyListened.map((release) => (
+              <li
+                key={release.id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{release.title}</p>
+                  <p className="truncate text-xs text-zinc-500">
+                    <Link
+                      href={`/artists/${release.artistId}`}
+                      className="hover:underline"
+                    >
+                      {release.artist.name}
+                    </Link>{" "}
+                    · {releaseTypeLabels[release.type]} ·{" "}
+                    {formatDate(release.releaseDate)}
+                  </p>
+                </div>
+                <ListenedToggle releaseId={release.id} listened />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
@@ -74,8 +117,14 @@ export default async function Home() {
         ) : (
           <ul className="flex flex-col divide-y divide-black/10 rounded-lg border border-black/10 dark:divide-white/10 dark:border-white/10">
             {activeArtists.map((artist) => (
-              <li key={artist.id} className="flex items-center justify-between px-4 py-3">
-                <Link href={`/artists/${artist.id}`} className="text-sm font-medium hover:underline">
+              <li
+                key={artist.id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <Link
+                  href={`/artists/${artist.id}`}
+                  className="truncate text-sm font-medium hover:underline"
+                >
                   {artist.name}
                 </Link>
                 <StatusToggleButton artistId={artist.id} status="ACTIVE" />
@@ -91,12 +140,19 @@ export default async function Home() {
             Paused ({pausedArtists.length})
           </h2>
           <p className="mb-3 text-xs text-zinc-500">
-            You won&apos;t see new releases from these artists here, but their full history is still saved on their page.
+            You won&apos;t see new releases from these artists here, but their full
+            history is still saved on their page.
           </p>
           <ul className="flex flex-col divide-y divide-black/10 rounded-lg border border-black/10 opacity-70 dark:divide-white/10 dark:border-white/10">
             {pausedArtists.map((artist) => (
-              <li key={artist.id} className="flex items-center justify-between px-4 py-3">
-                <Link href={`/artists/${artist.id}`} className="text-sm font-medium hover:underline">
+              <li
+                key={artist.id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <Link
+                  href={`/artists/${artist.id}`}
+                  className="truncate text-sm font-medium hover:underline"
+                >
                   {artist.name}
                 </Link>
                 <StatusToggleButton artistId={artist.id} status="PAUSED" />

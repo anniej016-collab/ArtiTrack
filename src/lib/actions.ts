@@ -55,6 +55,17 @@ export async function addRelease(formData: FormData) {
   revalidatePath(`/artists/${artistId}`);
 }
 
+export async function setReleaseListened(releaseId: string, listened: boolean) {
+  const release = await prisma.release.update({
+    where: { id: releaseId },
+    data: { listenedAt: listened ? new Date() : null },
+    select: { artistId: true },
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/artists/${release.artistId}`);
+}
+
 export async function deleteArtist(artistId: string) {
   await prisma.artist.delete({ where: { id: artistId } });
   revalidatePath("/");
