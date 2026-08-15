@@ -4,10 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { AddReleaseForm } from "@/components/AddReleaseForm";
 import { StatusToggleButton } from "@/components/StatusToggleButton";
 import { SyncArtistButton } from "@/components/SyncButtons";
-import { ListenedToggle } from "@/components/ListenedToggle";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
-import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
-import { CoverPlaceholder, VinylIcon } from "@/components/icons";
+import { ReleaseCard } from "@/components/ReleaseCard";
+import { VinylIcon } from "@/components/icons";
 import { deleteArtist } from "@/lib/actions";
 import { formatDate } from "@/lib/format";
 
@@ -116,51 +115,7 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
         ) : (
           <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
             {artist.releases.map((release) => (
-              <li key={release.id} className="group flex flex-col gap-2.5">
-                <div className="relative aspect-square overflow-hidden rounded-xl border border-line bg-white/2">
-                  {release.coverUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element -- provider host isn't known ahead of time */
-                    <img
-                      src={release.coverUrl}
-                      alt=""
-                      loading="lazy"
-                      /* Heard covers recede a little, but the check badge is the
-                         real signal — dimming hard makes a fully-heard
-                         catalogue look washed out. */
-                      className={`size-full object-cover transition duration-300 group-hover:scale-[1.04] ${
-                        release.listened ? "opacity-75" : ""
-                      }`}
-                    />
-                  ) : (
-                    <CoverPlaceholder className="size-full" />
-                  )}
-
-                  <div className="absolute right-2 top-2">
-                    <ListenedToggle
-                      releaseId={release.id}
-                      listened={release.listened}
-                      variant="overlay"
-                    />
-                  </div>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium" title={release.title}>
-                    {release.title}
-                  </p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <ReleaseTypeBadge type={release.type} />
-                    <span className="text-xs text-faint">
-                      {release.releaseDate.getUTCFullYear()}
-                    </span>
-                  </div>
-                  {release.listenedAt && (
-                    <p className="mt-1 text-[0.7rem] text-faint">
-                      Heard {formatDate(release.listenedAt)}
-                    </p>
-                  )}
-                </div>
-              </li>
+              <ReleaseCard key={release.id} release={release} showListenedDate />
             ))}
           </ul>
         )}

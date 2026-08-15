@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
 import { prisma } from "@/lib/prisma";
 import type { ReleaseType } from "@/generated/prisma/enums";
 import {
@@ -159,6 +161,16 @@ export async function syncArtistAction(artistId: string) {
 
 export async function syncAllAction() {
   await syncAllActive();
+  revalidatePath("/");
+}
+
+export async function setViewMode(mode: ViewMode) {
+  const store = await cookies();
+  store.set(VIEW_MODE_COOKIE, mode, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
   revalidatePath("/");
 }
 

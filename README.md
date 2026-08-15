@@ -13,6 +13,10 @@ losing their history.
 - **Mark releases as listened.** Anything unlistened from an artist you follow sits in
   the **To listen** queue on the home page. Marking it clears it from the queue; you can
   always un-mark it.
+- **Switch between cards and a list** on the home page. Card view shows album art for
+  releases and photos for artists; list view is text-only. The choice is stored in a
+  cookie, so the server renders the right layout straight away and it survives closing
+  the tab.
 - **Pause updates** for an artist you no longer follow. They stop being synced, drop out
   of "Following", and their releases leave the To listen queue — but their full release
   history, including what you'd already marked as listened, stays on their page.

@@ -35,6 +35,27 @@ export function CheckIcon({ className = "" }: { className?: string }) {
   );
 }
 
+export function GridIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className={className}>
+      <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.4" />
+      <rect x="9" y="1.5" width="5.5" height="5.5" rx="1.4" />
+      <rect x="1.5" y="9" width="5.5" height="5.5" rx="1.4" />
+      <rect x="9" y="9" width="5.5" height="5.5" rx="1.4" />
+    </svg>
+  );
+}
+
+export function ListIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className={className}>
+      <rect x="1.5" y="2.5" width="13" height="2.2" rx="1.1" />
+      <rect x="1.5" y="6.9" width="13" height="2.2" rx="1.1" />
+      <rect x="1.5" y="11.3" width="13" height="2.2" rx="1.1" />
+    </svg>
+  );
+}
+
 export function PlusIcon({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className={className}>

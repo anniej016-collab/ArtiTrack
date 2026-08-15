@@ -6,6 +6,11 @@ import { SyncAllButton } from "@/components/SyncButtons";
 import { StatusToggleButton } from "@/components/StatusToggleButton";
 import { ListenedToggle } from "@/components/ListenedToggle";
 import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
+import { ReleaseCard, type ReleaseCardData } from "@/components/ReleaseCard";
+import { ArtistCard, type ArtistCardData } from "@/components/ArtistCard";
+import { ViewToggle } from "@/components/ViewToggle";
+import { VinylIcon } from "@/components/icons";
+import { getViewMode, type ViewMode } from "@/lib/view-mode";
 import { formatDate } from "@/lib/format";
 
 // Always read live data, and keep the database out of the build step.
@@ -24,20 +29,38 @@ function Stat({ value, label }: { value: number; label: string }) {
   );
 }
 
-/* Deliberately no artwork on this page — it stays a clean, scannable list. */
-function ReleaseRow({
-  release,
+function SectionHeading({
+  title,
+  count,
+  children,
 }: {
-  release: {
-    id: string;
-    title: string;
-    type: string;
-    releaseDate: Date;
-    listened: boolean;
-    artistId: string;
-    artist: { name: string };
-  };
+  title: string;
+  count?: number;
+  children?: React.ReactNode;
 }) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <h2 className="eyebrow">
+        {title}
+        {count !== undefined && count > 0 && (
+          <span className="ml-1.5 text-faint/70">· {count}</span>
+        )}
+      </h2>
+      {children}
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="panel flex flex-col items-center gap-3 px-5 py-10 text-center">
+      <VinylIcon className="size-7 text-white/15" />
+      <p className="max-w-xs text-sm text-muted">{message}</p>
+    </div>
+  );
+}
+
+function ReleaseRow({ release }: { release: ReleaseCardData }) {
   return (
     <li className="row-hover flex items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
@@ -46,13 +69,17 @@ function ReleaseRow({
           <ReleaseTypeBadge type={release.type} />
         </div>
         <p className="mt-1 truncate text-xs text-faint">
-          <Link
-            href={`/artists/${release.artistId}`}
-            className="text-muted transition-colors hover:text-text"
-          >
-            {release.artist.name}
-          </Link>
-          <span className="mx-1.5 opacity-40">•</span>
+          {release.artist && (
+            <>
+              <Link
+                href={`/artists/${release.artistId}`}
+                className="text-muted transition-colors hover:text-text"
+              >
+                {release.artist.name}
+              </Link>
+              <span className="mx-1.5 opacity-40">•</span>
+            </>
+          )}
           {formatDate(release.releaseDate)}
         </p>
       </div>
@@ -61,24 +88,102 @@ function ReleaseRow({
   );
 }
 
+function ReleaseGroup({ releases, mode }: { releases: ReleaseCardData[]; mode: ViewMode }) {
+  if (mode === "list") {
+    return (
+      <ul className="panel divide-y divide-line overflow-hidden">
+        {releases.map((release) => (
+          <ReleaseRow key={release.id} release={release} />
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+      {releases.map((release) => (
+        <ReleaseCard key={release.id} release={release} showArtist />
+      ))}
+    </ul>
+  );
+}
+
+function ArtistGroup({
+  artists,
+  mode,
+  status,
+}: {
+  artists: ArtistCardData[];
+  mode: ViewMode;
+  status: "ACTIVE" | "PAUSED";
+}) {
+  if (mode === "list") {
+    return (
+      <ul className="panel divide-y divide-line overflow-hidden">
+        {artists.map((artist) => (
+          <li
+            key={artist.id}
+            className="row-hover flex items-center justify-between gap-3 px-4 py-3"
+          >
+            <Link
+              href={`/artists/${artist.id}`}
+              className="truncate text-sm font-medium transition-colors hover:text-accent"
+            >
+              {artist.name}
+            </Link>
+            <StatusToggleButton artistId={artist.id} status={status} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      {artists.map((artist) => (
+        <ArtistCard key={artist.id} artist={artist} />
+      ))}
+    </ul>
+  );
+}
+
 export default async function Home() {
-  const [activeArtists, pausedArtists, toListen, recentlyListened, listenedCount] =
+  const artistSelect = {
+    id: true,
+    name: true,
+    imageUrl: true,
+    status: true,
+    source: true,
+    externalId: true,
+    _count: { select: { releases: true } },
+  } as const;
+
+  const [viewMode, activeArtists, pausedArtists, toListen, recentlyListened, heardCount] =
     await Promise.all([
-      prisma.artist.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
-      prisma.artist.findMany({ where: { status: "PAUSED" }, orderBy: { name: "asc" } }),
+      getViewMode(),
+      prisma.artist.findMany({
+        where: { status: "ACTIVE" },
+        orderBy: { name: "asc" },
+        select: artistSelect,
+      }),
+      prisma.artist.findMany({
+        where: { status: "PAUSED" },
+        orderBy: { name: "asc" },
+        select: artistSelect,
+      }),
       prisma.release.findMany({
         where: { listened: false, artist: { status: "ACTIVE" } },
         orderBy: { releaseDate: "desc" },
-        take: 15,
-        include: { artist: true },
+        take: 16,
+        include: { artist: { select: { name: true } } },
       }),
       // Only releases marked by hand, which is what carries a date. An imported
       // back catalogue is listened but undated, and was never "recent".
       prisma.release.findMany({
         where: { listenedAt: { not: null }, artist: { status: "ACTIVE" } },
         orderBy: { listenedAt: "desc" },
-        take: 5,
-        include: { artist: true },
+        take: 8,
+        include: { artist: { select: { name: true } } },
       }),
       prisma.release.count({ where: { listened: true } }),
     ]);
@@ -86,10 +191,11 @@ export default async function Home() {
   const syncableCount = activeArtists.filter(
     (artist) => artist.source !== "manual" && artist.externalId,
   ).length;
+  const hasLibrary = activeArtists.length > 0 || pausedArtists.length > 0;
 
   return (
     <div className="flex flex-col gap-12">
-      <section>
+      <section className="pt-2">
         <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
           Everything you&apos;re
           <span className="block bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">
@@ -101,106 +207,77 @@ export default async function Home() {
           moved on from — their history stays.
         </p>
 
-        <div className="mt-6">
+        <div className="mt-6 rounded-2xl border border-line bg-gradient-to-b from-white/6 to-transparent p-4">
           <ArtistSearch />
+          <details className="group mt-3">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-faint transition-colors hover:text-muted">
+              <span className="transition-transform group-open:rotate-90">›</span>
+              Can&apos;t find them? Add by hand
+            </summary>
+            <div className="mt-3">
+              <AddArtistForm />
+            </div>
+          </details>
         </div>
-
-        <details className="mt-3 group">
-          <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-faint transition-colors hover:text-muted">
-            <span className="transition-transform group-open:rotate-90">›</span>
-            Can&apos;t find them? Add by hand
-          </summary>
-          <div className="mt-3">
-            <AddArtistForm />
-          </div>
-        </details>
       </section>
 
-      {(activeArtists.length > 0 || pausedArtists.length > 0) && (
-        <section className="grid grid-cols-3 gap-3">
-          <Stat value={activeArtists.length} label="Following" />
-          <Stat value={toListen.length} label="To listen" />
-          <Stat value={listenedCount} label="Heard" />
-        </section>
+      {hasLibrary && (
+        <>
+          <section className="grid grid-cols-3 gap-3">
+            <Stat value={activeArtists.length} label="Following" />
+            <Stat value={toListen.length} label="To listen" />
+            <Stat value={heardCount} label="Heard" />
+          </section>
+
+          <div className="-mb-6 flex items-center justify-between gap-3">
+            <h2 className="font-display text-lg font-semibold tracking-tight">
+              Your library
+            </h2>
+            <ViewToggle current={viewMode} />
+          </div>
+        </>
       )}
 
       <section>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="eyebrow">To listen</h2>
+        <SectionHeading title="To listen" count={toListen.length}>
           {syncableCount > 0 && <SyncAllButton />}
-        </div>
+        </SectionHeading>
         {toListen.length === 0 ? (
-          <div className="panel px-5 py-10 text-center">
-            <p className="text-sm text-muted">
-              {activeArtists.length === 0
-                ? "Search for an artist above to get started."
-                : "All caught up — nothing new from the artists you follow."}
-            </p>
-          </div>
+          <EmptyState
+            message={
+              activeArtists.length === 0
+                ? "Search for an artist above and their releases will show up here."
+                : "All caught up — nothing new from the artists you follow."
+            }
+          />
         ) : (
-          <ul className="panel divide-y divide-line overflow-hidden">
-            {toListen.map((release) => (
-              <ReleaseRow key={release.id} release={release} />
-            ))}
-          </ul>
+          <ReleaseGroup releases={toListen} mode={viewMode} />
         )}
       </section>
 
       {recentlyListened.length > 0 && (
         <section>
-          <h2 className="eyebrow mb-3">Recently listened</h2>
-          <ul className="panel divide-y divide-line overflow-hidden">
-            {recentlyListened.map((release) => (
-              <ReleaseRow key={release.id} release={release} />
-            ))}
-          </ul>
+          <SectionHeading title="Recently listened" />
+          <ReleaseGroup releases={recentlyListened} mode={viewMode} />
         </section>
       )}
 
       {activeArtists.length > 0 && (
         <section>
-          <h2 className="eyebrow mb-3">Following · {activeArtists.length}</h2>
-          <ul className="panel divide-y divide-line overflow-hidden">
-            {activeArtists.map((artist) => (
-              <li
-                key={artist.id}
-                className="row-hover flex items-center justify-between gap-3 px-4 py-3"
-              >
-                <Link
-                  href={`/artists/${artist.id}`}
-                  className="truncate text-sm font-medium transition-colors hover:text-accent"
-                >
-                  {artist.name}
-                </Link>
-                <StatusToggleButton artistId={artist.id} status="ACTIVE" />
-              </li>
-            ))}
-          </ul>
+          <SectionHeading title="Following" count={activeArtists.length} />
+          <ArtistGroup artists={activeArtists} mode={viewMode} status="ACTIVE" />
         </section>
       )}
 
       {pausedArtists.length > 0 && (
         <section>
-          <h2 className="eyebrow mb-2">Paused · {pausedArtists.length}</h2>
-          <p className="mb-3 text-xs text-faint">
+          <SectionHeading title="Paused" count={pausedArtists.length} />
+          <p className="-mt-1 mb-3 text-xs text-faint">
             No new releases from these artists. Their history is untouched.
           </p>
-          <ul className="panel divide-y divide-line overflow-hidden opacity-60">
-            {pausedArtists.map((artist) => (
-              <li
-                key={artist.id}
-                className="row-hover flex items-center justify-between gap-3 px-4 py-3"
-              >
-                <Link
-                  href={`/artists/${artist.id}`}
-                  className="truncate text-sm font-medium transition-colors hover:text-accent"
-                >
-                  {artist.name}
-                </Link>
-                <StatusToggleButton artistId={artist.id} status="PAUSED" />
-              </li>
-            ))}
-          </ul>
+          <div className="opacity-65 transition-opacity hover:opacity-100">
+            <ArtistGroup artists={pausedArtists} mode={viewMode} status="PAUSED" />
+          </div>
         </section>
       )}
     </div>
