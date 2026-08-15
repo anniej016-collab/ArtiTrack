@@ -24,16 +24,20 @@ added without a schema rewrite.
 2. Go to [vercel.com/new](https://vercel.com/new) and import the `ArtiTrack` repository.
    Vercel detects Next.js automatically — leave the build settings alone.
 3. **Create the database before the first deploy succeeds.** In the Vercel project, open
-   the **Storage** tab → **Create Database** → **Postgres** (Neon). Connect it to the
-   project **without a custom environment-variable prefix** — the app looks for the
-   standard names and a prefix renames them.
+   the **Storage** tab → **Create Database** → **Postgres** (Neon) and connect it to the
+   project. A custom environment-variable prefix is fine; the app resolves the
+   connection string by looking for any variable holding a `postgres://` URL.
 
    If Vercel reports *"This project already has an existing environment variable with
-   name DATABASE_URL"*, delete that variable under **Settings → Environment Variables**
-   and connect the database again. Reaching for a custom prefix to dodge the collision
-   will produce a variable the app cannot see.
+   name DATABASE_URL"*, either delete that variable under **Settings → Environment
+   Variables** and attach again, or attach with a prefix to sidestep the collision.
 4. Redeploy. The build runs `prisma migrate deploy`, which creates the tables on the
    first successful build.
+
+If a build fails with *"Connection url is empty"* or *"No Postgres connection string is
+available"*, the database is not reaching that build. The build log lists the names of
+the database-related variables it can see, which distinguishes "nothing attached" from
+"attached but scoped to a different environment".
 
 The app has no login, so anyone with the deployment URL can read and edit your data.
 Vercel's **Deployment Protection** settings (Project → Settings → Deployment Protection)
