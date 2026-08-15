@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { AddArtistForm } from "@/components/AddArtistForm";
+import { ArtistSearch } from "@/components/ArtistSearch";
+import { SyncAllButton } from "@/components/SyncButtons";
 import { StatusToggleButton } from "@/components/StatusToggleButton";
 import { ListenedToggle } from "@/components/ListenedToggle";
 import { formatDate, releaseTypeLabels } from "@/lib/format";
@@ -33,6 +35,10 @@ export default async function Home() {
       }),
     ]);
 
+  const syncableCount = activeArtists.filter(
+    (artist) => artist.source !== "manual" && artist.externalId,
+  ).length;
+
   return (
     <div className="flex flex-col gap-10">
       <section>
@@ -40,15 +46,26 @@ export default async function Home() {
           Your artists
         </h1>
         <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-          Add an artist to start tracking their releases.
+          Search for an artist to pull in their releases automatically.
         </p>
-        <AddArtistForm />
+        <ArtistSearch />
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs text-zinc-500 hover:text-foreground">
+            Can&apos;t find them? Add by hand
+          </summary>
+          <div className="mt-3">
+            <AddArtistForm />
+          </div>
+        </details>
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          To listen ({toListen.length})
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            To listen ({toListen.length})
+          </h2>
+          {syncableCount > 0 && <SyncAllButton />}
+        </div>
         {toListen.length === 0 ? (
           <p className="text-sm text-zinc-500">
             Nothing waiting — you&apos;re all caught up on the artists you follow.

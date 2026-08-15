@@ -4,19 +4,23 @@ A personal tracker for the artists you follow: log their releases, mark what you
 listened to, and pause artists you no longer want new-release updates from — without
 losing their history.
 
-- **Add an artist** from the home page.
-- **Log releases** (albums, EPs, singles) from an artist's page.
+- **Search for an artist** on the home page and add them. Their back catalogue is
+  imported automatically from [Deezer](https://www.deezer.com) — no API key or account
+  needed. Artists can still be added and their releases logged by hand.
+- **Check for new releases** with a button on the home page (all followed artists) or on
+  a single artist's page. Re-syncing updates existing releases rather than duplicating
+  them, and never overwrites what you've marked as listened.
 - **Mark releases as listened.** Anything unlistened from an artist you follow sits in
   the **To listen** queue on the home page. Marking it clears it from the queue; you can
   always un-mark it.
-- **Pause updates** for an artist you no longer follow. They drop out of "Following" and
-  their releases leave the To listen queue — but their full release history, including
-  what you'd already marked as listened, stays on their page.
+- **Pause updates** for an artist you no longer follow. They stop being synced, drop out
+  of "Following", and their releases leave the To listen queue — but their full release
+  history, including what you'd already marked as listened, stays on their page.
 - **Resume** a paused artist any time.
 
-Releases are entered manually. The `Artist` model reserves `source` / `externalId`
-fields for a future auto-pull integration (e.g. Spotify or MusicBrainz) so that can be
-added without a schema rewrite.
+When you add an artist, **"Heard already" is ticked by default** so their existing
+catalogue does not flood the To listen queue. Releases found by later syncs arrive
+unlistened, which is what makes the queue mean "new since I started following".
 
 ## Deploying to Vercel
 
@@ -64,8 +68,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Data model
 
-- `Artist` — name, follow `status` (`ACTIVE` / `PAUSED`), `pausedAt`.
+- `Artist` — name, follow `status` (`ACTIVE` / `PAUSED`), `pausedAt`, plus `source` /
+  `externalId` identifying the provider record and `lastSyncedAt`.
 - `Release` — belongs to an artist; `title`, `type` (`ALBUM`/`EP`/`SINGLE`/`OTHER`),
-  `releaseDate`, and `listenedAt` (null means not listened yet).
+  `releaseDate`, `listenedAt` (null means not listened yet), and `externalId`, which is
+  what makes re-syncing idempotent. Hand-entered releases have a null `externalId`.
 
-Pausing an artist only changes `Artist.status`. It never deletes or alters releases.
+Pausing an artist only changes `Artist.status`. It never deletes or alters releases, and
+`syncArtist` refuses to run for a paused artist.
+
+Adding a provider means implementing `searchArtists` / `fetchArtistReleases` alongside
+`src/lib/providers/deezer.ts`; the sync layer is written against that shape.

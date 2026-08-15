@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import type { ReleaseType } from "@/generated/prisma/enums";
+import {
+  PROVIDER_KEY,
+  fetchArtistReleases,
+  searchArtists,
+  type ProviderArtist,
+} from "@/lib/providers/deezer";
+import { persistReleases, syncAllActive, syncArtist } from "@/lib/sync";
 
 export async function createArtist(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -64,6 +71,93 @@ export async function setReleaseListened(releaseId: string, listened: boolean) {
 
   revalidatePath("/");
   revalidatePath(`/artists/${release.artistId}`);
+}
+
+export type SearchState = {
+  query: string;
+  results: ProviderArtist[];
+  error: string | null;
+};
+
+export async function searchArtistsAction(
+  _previous: SearchState,
+  formData: FormData,
+): Promise<SearchState> {
+  const query = String(formData.get("query") ?? "").trim();
+  if (!query) return { query, results: [], error: null };
+
+  try {
+    return { query, results: await searchArtists(query), error: null };
+  } catch (error) {
+    return {
+      query,
+      results: [],
+      error: error instanceof Error ? error.message : "Search failed.",
+    };
+  }
+}
+
+export type ImportState = {
+  message: string | null;
+  error: string | null;
+};
+
+export async function importArtistAction(
+  _previous: ImportState,
+  formData: FormData,
+): Promise<ImportState> {
+  const externalId = String(formData.get("externalId") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const imageUrl = String(formData.get("imageUrl") ?? "").trim() || null;
+  // Unchecked boxes are absent from FormData entirely.
+  const markListened = formData.get("markListened") !== null;
+
+  if (!externalId || !name) {
+    return { message: null, error: "Missing artist details." };
+  }
+
+  const existing = await prisma.artist.findUnique({
+    where: { source_externalId: { source: PROVIDER_KEY, externalId } },
+    select: { name: true },
+  });
+  if (existing) {
+    return { message: null, error: `${existing.name} is already in your tracker.` };
+  }
+
+  try {
+    const releases = await fetchArtistReleases(externalId);
+
+    const artist = await prisma.artist.create({
+      data: { name, imageUrl, source: PROVIDER_KEY, externalId, lastSyncedAt: new Date() },
+    });
+
+    const { added } = await persistReleases(artist.id, releases, { markListened });
+
+    revalidatePath("/");
+    return {
+      message:
+        added > 0
+          ? `Added ${name} with ${added} release${added === 1 ? "" : "s"}.`
+          : `Added ${name}. No releases found.`,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      message: null,
+      error: error instanceof Error ? error.message : "Import failed.",
+    };
+  }
+}
+
+export async function syncArtistAction(artistId: string) {
+  await syncArtist(artistId);
+  revalidatePath("/");
+  revalidatePath(`/artists/${artistId}`);
+}
+
+export async function syncAllAction() {
+  await syncAllActive();
+  revalidatePath("/");
 }
 
 export async function deleteArtist(artistId: string) {

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { AddReleaseForm } from "@/components/AddReleaseForm";
 import { StatusToggleButton } from "@/components/StatusToggleButton";
+import { SyncArtistButton } from "@/components/SyncButtons";
 import { ListenedToggle } from "@/components/ListenedToggle";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { deleteArtist } from "@/lib/actions";
@@ -24,6 +25,8 @@ export default async function ArtistPage({
     (release) => release.listenedAt !== null,
   ).length;
 
+  const isSyncable = artist.source !== "manual" && artist.externalId !== null;
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -41,14 +44,32 @@ export default async function ArtistPage({
               : `Updates paused${artist.pausedAt ? " on " + formatDate(artist.pausedAt) : ""}. Their release history below is unaffected.`}
           </p>
         </div>
-        <StatusToggleButton artistId={artist.id} status={artist.status} />
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <StatusToggleButton artistId={artist.id} status={artist.status} />
+          {isSyncable && artist.status === "ACTIVE" && (
+            <SyncArtistButton artistId={artist.id} />
+          )}
+        </div>
       </div>
 
+      {isSyncable && (
+        <p className="-mt-4 text-xs text-zinc-500">
+          Releases come from Deezer.
+          {artist.lastSyncedAt
+            ? ` Last checked ${formatDate(artist.lastSyncedAt)}.`
+            : ""}
+        </p>
+      )}
+
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Log a release
-        </h2>
-        <AddReleaseForm artistId={artist.id} />
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wide text-zinc-500 hover:text-foreground">
+            Log a release by hand
+          </summary>
+          <div className="mt-3">
+            <AddReleaseForm artistId={artist.id} />
+          </div>
+        </details>
       </section>
 
       <section>
