@@ -25,7 +25,13 @@ added without a schema rewrite.
    Vercel detects Next.js automatically — leave the build settings alone.
 3. **Create the database before the first deploy succeeds.** In the Vercel project, open
    the **Storage** tab → **Create Database** → **Postgres** (Neon). Connect it to the
-   project. Vercel sets `DATABASE_URL` for you.
+   project **without a custom environment-variable prefix** — the app looks for the
+   standard names and a prefix renames them.
+
+   If Vercel reports *"This project already has an existing environment variable with
+   name DATABASE_URL"*, delete that variable under **Settings → Environment Variables**
+   and connect the database again. Reaching for a custom prefix to dodge the collision
+   will produce a variable the app cannot see.
 4. Redeploy. The build runs `prisma migrate deploy`, which creates the tables on the
    first successful build.
 

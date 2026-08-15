@@ -5,11 +5,26 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// Hosted Postgres providers name the connection string differently, and Vercel's
+// database integrations set several of these at once. Prefer a pooled URL here:
+// serverless functions open a lot of short-lived connections.
+const RUNTIME_URL_VARS = [
+  "DATABASE_URL",
+  "POSTGRES_PRISMA_URL",
+  "POSTGRES_URL",
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
+] as const;
+
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = RUNTIME_URL_VARS.map((name) => process.env[name]).find(
+    (value) => value,
+  );
+
   if (!connectionString) {
     throw new Error(
-      "DATABASE_URL is not set. Add it to .env locally, or to the project's Environment Variables on Vercel.",
+      `No Postgres connection string found. Set one of: ${RUNTIME_URL_VARS.join(", ")}. ` +
+        "Locally that means .env; on Vercel, the project's Environment Variables.",
     );
   }
 
