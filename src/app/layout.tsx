@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Space_Grotesk } from "next/font/google";
 import Link from "next/link";
+import { VinylIcon } from "@/components/icons";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -8,31 +9,40 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Slightly mechanical headline face — reads closer to sleeve typography than Geist does.
+const display = Space_Grotesk({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
   title: "ArtiTrack",
-  description: "Track the artists you follow and their releases.",
+  description: "Track the artists you follow, their releases, and what you've heard.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${display.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <header className="border-b border-black/10 dark:border-white/10">
-          <div className="mx-auto flex max-w-3xl items-center px-6 py-4">
-            <Link href="/" className="text-lg font-semibold tracking-tight">
-              ArtiTrack
+      <body className="flex min-h-full flex-col">
+        <header className="sticky top-0 z-20 border-b border-line bg-bg/70 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-4xl items-center gap-2.5 px-5 py-3.5">
+            <Link href="/" className="group flex items-center gap-2.5">
+              <span className="rounded-full bg-gradient-to-br from-accent to-accent-2 p-[1.5px]">
+                <span className="flex size-7 items-center justify-center rounded-full bg-bg">
+                  <VinylIcon className="size-5 text-white/85 transition-transform duration-500 group-hover:rotate-180" />
+                </span>
+              </span>
+              <span className="text-[0.95rem] font-semibold tracking-tight">
+                Arti<span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-2">Track</span>
+              </span>
             </Link>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
+        <main className="mx-auto w-full max-w-4xl flex-1 px-5 pb-20 pt-8">
           {children}
         </main>
       </body>

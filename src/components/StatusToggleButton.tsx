@@ -8,17 +8,22 @@ export function StatusToggleButton({
   status: "ACTIVE" | "PAUSED";
 }) {
   const nextStatus = status === "ACTIVE" ? "PAUSED" : "ACTIVE";
-  const label = status === "ACTIVE" ? "Pause updates" : "Resume updates";
+  const label = status === "ACTIVE" ? "Pause" : "Resume";
   const action = setArtistStatus.bind(null, artistId, nextStatus);
 
   return (
     <form action={action}>
       <button
         type="submit"
+        title={
+          status === "ACTIVE"
+            ? "Stop pulling in new releases from this artist"
+            : "Start pulling in new releases again"
+        }
         className={
           status === "ACTIVE"
-            ? "rounded-full border border-black/10 px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-black/5 dark:border-white/10 dark:text-zinc-400 dark:hover:bg-white/5"
-            : "rounded-full bg-foreground px-3 py-1 text-xs font-medium text-background transition-colors hover:opacity-90"
+            ? "btn-ghost px-3 py-1.5 text-xs font-medium"
+            : "rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-white"
         }
       >
         {label}

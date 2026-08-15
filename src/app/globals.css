@@ -1,26 +1,150 @@
 @import "tailwindcss";
 
+/*
+ * Dark-only on purpose. This is a music library, and the artwork is the point:
+ * covers read better against a dark ground, and every listening app the user
+ * already knows works this way.
+ */
 :root {
-  --background: #fafaf9;
-  --foreground: #1c1917;
+  --bg: #09090f;
+  --panel: rgba(255, 255, 255, 0.038);
+  --panel-hover: rgba(255, 255, 255, 0.072);
+  --line: rgba(255, 255, 255, 0.09);
+  --text: #f3f3f6;
+  --muted: #9a9aab;
+  --faint: #6c6c7d;
+  --accent: #a855f7;
+  --accent-2: #ec4899;
+  --success: #34d399;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-hover: var(--panel-hover);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0c0a09;
-    --foreground: #fafaf9;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--bg);
+  color: var(--text);
   font-family: var(--font-sans), system-ui, sans-serif;
+  /* Two soft lights up top so the page isn't a flat slab of black. */
+  background-image:
+    radial-gradient(60rem 30rem at 12% -8%, rgba(168, 85, 247, 0.16), transparent 60%),
+    radial-gradient(50rem 26rem at 92% -14%, rgba(236, 72, 153, 0.13), transparent 60%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+@layer components {
+  .panel {
+    background-color: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 0.875rem;
+  }
+
+  .row-hover {
+    transition: background-color 150ms ease;
+  }
+  .row-hover:hover {
+    background-color: var(--panel-hover);
+  }
+
+  /* Section labels: small, spaced, quiet. */
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .btn-primary {
+    background-image: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    font-weight: 600;
+    border-radius: 0.625rem;
+    transition: filter 150ms ease, opacity 150ms ease;
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.12);
+  }
+  .btn-primary:disabled {
+    opacity: 0.55;
+  }
+
+  .btn-ghost {
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 9999px;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  .btn-ghost:hover {
+    background-color: var(--panel-hover);
+    color: var(--text);
+  }
+
+  .field {
+    background-color: rgba(0, 0, 0, 0.28);
+    border: 1px solid var(--line);
+    border-radius: 0.625rem;
+    color: var(--text);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .field::placeholder {
+    color: var(--faint);
+  }
+  .field:focus {
+    outline: none;
+    border-color: rgba(168, 85, 247, 0.6);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+  }
+}
+
+/*
+ * Cover-art buttons stay visible on touch screens, where there is no hover to
+ * reveal them, and fade in on hover only where hovering is actually possible.
+ */
+.reveal-on-hover {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reveal-on-hover {
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+  .group:hover .reveal-on-hover,
+  .reveal-on-hover:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* The record keeps spinning only while a sync is actually in flight. */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 2.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-slow {
+    animation: none;
+  }
 }

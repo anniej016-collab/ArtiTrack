@@ -6,12 +6,12 @@ import { StatusToggleButton } from "@/components/StatusToggleButton";
 import { SyncArtistButton } from "@/components/SyncButtons";
 import { ListenedToggle } from "@/components/ListenedToggle";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
+import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
+import { CoverPlaceholder, VinylIcon } from "@/components/icons";
 import { deleteArtist } from "@/lib/actions";
-import { formatDate, releaseTypeLabels } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 
-export default async function ArtistPage({
-  params,
-}: PageProps<"/artists/[id]">) {
+export default async function ArtistPage({ params }: PageProps<"/artists/[id]">) {
   const { id } = await params;
 
   const artist = await prisma.artist.findUnique({
@@ -21,66 +21,155 @@ export default async function ArtistPage({
 
   if (!artist) notFound();
 
-  const listenedCount = artist.releases.filter(
-    (release) => release.listened,
-  ).length;
-
+  const listenedCount = artist.releases.filter((release) => release.listened).length;
   const isSyncable = artist.source !== "manual" && artist.externalId !== null;
+  const isPaused = artist.status === "PAUSED";
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <Link href="/" className="text-xs font-medium text-zinc-500 hover:text-foreground">
-          ← All artists
-        </Link>
-      </div>
+    <div className="flex flex-col gap-10">
+      <Link
+        href="/"
+        className="inline-flex w-fit items-center gap-1.5 text-xs font-medium text-faint transition-colors hover:text-text"
+      >
+        <span aria-hidden="true">←</span> All artists
+      </Link>
 
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          {artist.imageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element -- provider host isn't known ahead of time */
+      {/* Hero: the artist photo doubles as the backdrop, blurred out behind itself. */}
+      <section className="relative overflow-hidden rounded-2xl border border-line">
+        {artist.imageUrl && (
+          <div className="absolute inset-0" aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element -- provider host isn't known ahead of time */}
             <img
               src={artist.imageUrl}
               alt=""
-              className="size-16 shrink-0 rounded-full object-cover"
+              className="size-full scale-125 object-cover opacity-40 blur-2xl"
             />
-          ) : (
-            <div
-              aria-hidden="true"
-              className="flex size-16 shrink-0 items-center justify-center rounded-full bg-black/5 text-xl font-medium text-zinc-400 dark:bg-white/10"
-            >
-              {artist.name.charAt(0).toUpperCase()}
+            <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/85 to-bg/50" />
+          </div>
+        )}
+
+        <div className="relative flex flex-col gap-5 p-6 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            {artist.imageUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element -- provider host isn't known ahead of time */
+              <img
+                src={artist.imageUrl}
+                alt=""
+                className="size-20 shrink-0 rounded-full object-cover ring-2 ring-white/15 sm:size-24"
+              />
+            ) : (
+              <div className="flex size-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent/25 to-accent-2/25 ring-2 ring-white/10 sm:size-24">
+                <VinylIcon className="size-10 text-white/40" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h1 className="font-display truncate text-3xl font-semibold tracking-tight sm:text-4xl">
+                {artist.name}
+              </h1>
+              <p className="mt-1.5 text-xs text-muted">
+                {artist.releases.length} release
+                {artist.releases.length === 1 ? "" : "s"}
+                <span className="mx-1.5 opacity-40">•</span>
+                {listenedCount} heard
+                {isPaused && (
+                  <>
+                    <span className="mx-1.5 opacity-40">•</span>
+                    <span className="text-amber-300/90">
+                      paused
+                      {artist.pausedAt ? ` ${formatDate(artist.pausedAt)}` : ""}
+                    </span>
+                  </>
+                )}
+              </p>
             </div>
-          )}
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight">{artist.name}</h1>
-            <p className="mt-1 text-sm text-zinc-500">
-              {artist.status === "ACTIVE"
-                ? "You're following new releases from this artist."
-                : `Updates paused${artist.pausedAt ? " on " + formatDate(artist.pausedAt) : ""}. Their release history below is unaffected.`}
-            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            {isSyncable && !isPaused && <SyncArtistButton artistId={artist.id} />}
+            <StatusToggleButton artistId={artist.id} status={artist.status} />
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <StatusToggleButton artistId={artist.id} status={artist.status} />
-          {isSyncable && artist.status === "ACTIVE" && (
-            <SyncArtistButton artistId={artist.id} />
-          )}
-        </div>
-      </div>
+      </section>
 
-      {isSyncable && (
-        <p className="-mt-4 text-xs text-zinc-500">
-          Releases come from Deezer.
-          {artist.lastSyncedAt
-            ? ` Last checked ${formatDate(artist.lastSyncedAt)}.`
-            : ""}
-        </p>
-      )}
+      <p className="-mt-6 text-xs text-faint">
+        {isPaused
+          ? "Paused, so nothing new is pulled in. Everything below stays exactly as it is."
+          : isSyncable
+            ? `Releases come from Deezer.${
+                artist.lastSyncedAt
+                  ? ` Last checked ${formatDate(artist.lastSyncedAt)}.`
+                  : ""
+              }`
+            : "Added by hand — log releases yourself below."}
+      </p>
 
       <section>
-        <details>
-          <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wide text-zinc-500 hover:text-foreground">
+        <h2 className="eyebrow mb-3">
+          Releases {artist.releases.length > 0 && `· ${artist.releases.length}`}
+        </h2>
+
+        {artist.releases.length === 0 ? (
+          <div className="panel px-5 py-12 text-center">
+            <VinylIcon className="mx-auto size-8 text-white/15" />
+            <p className="mt-3 text-sm text-muted">Nothing here yet.</p>
+          </div>
+        ) : (
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+            {artist.releases.map((release) => (
+              <li key={release.id} className="group flex flex-col gap-2.5">
+                <div className="relative aspect-square overflow-hidden rounded-xl border border-line bg-white/2">
+                  {release.coverUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element -- provider host isn't known ahead of time */
+                    <img
+                      src={release.coverUrl}
+                      alt=""
+                      loading="lazy"
+                      /* Heard covers recede a little, but the check badge is the
+                         real signal — dimming hard makes a fully-heard
+                         catalogue look washed out. */
+                      className={`size-full object-cover transition duration-300 group-hover:scale-[1.04] ${
+                        release.listened ? "opacity-75" : ""
+                      }`}
+                    />
+                  ) : (
+                    <CoverPlaceholder className="size-full" />
+                  )}
+
+                  <div className="absolute right-2 top-2">
+                    <ListenedToggle
+                      releaseId={release.id}
+                      listened={release.listened}
+                      variant="overlay"
+                    />
+                  </div>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium" title={release.title}>
+                    {release.title}
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <ReleaseTypeBadge type={release.type} />
+                    <span className="text-xs text-faint">
+                      {release.releaseDate.getUTCFullYear()}
+                    </span>
+                  </div>
+                  {release.listenedAt && (
+                    <p className="mt-1 text-[0.7rem] text-faint">
+                      Heard {formatDate(release.listenedAt)}
+                    </p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <details className="group">
+          <summary className="eyebrow inline-flex cursor-pointer list-none items-center gap-1.5 transition-colors hover:text-muted">
+            <span className="transition-transform group-open:rotate-90">›</span>
             Log a release by hand
           </summary>
           <div className="mt-3">
@@ -89,57 +178,7 @@ export default async function ArtistPage({
         </details>
       </section>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Release history ({artist.releases.length})
-          {listenedCount > 0 && (
-            <span className="ml-2 font-normal normal-case tracking-normal text-zinc-400">
-              {listenedCount} listened
-            </span>
-          )}
-        </h2>
-        {artist.releases.length === 0 ? (
-          <p className="text-sm text-zinc-500">No releases logged yet.</p>
-        ) : (
-          <ul className="flex flex-col divide-y divide-black/10 rounded-lg border border-black/10 dark:divide-white/10 dark:border-white/10">
-            {artist.releases.map((release) => (
-              <li
-                key={release.id}
-                className="flex items-center justify-between gap-3 px-4 py-3"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  {release.coverUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element -- provider host isn't known ahead of time */
-                    <img
-                      src={release.coverUrl}
-                      alt=""
-                      className="size-12 shrink-0 rounded object-cover"
-                    />
-                  ) : (
-                    <div
-                      aria-hidden="true"
-                      className="size-12 shrink-0 rounded bg-black/5 dark:bg-white/10"
-                    />
-                  )}
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{release.title}</p>
-                    <p className="truncate text-xs text-zinc-500">
-                      {releaseTypeLabels[release.type]} ·{" "}
-                      {formatDate(release.releaseDate)}
-                      {release.listenedAt
-                        ? ` · listened ${formatDate(release.listenedAt)}`
-                        : ""}
-                    </p>
-                  </div>
-                </div>
-                <ListenedToggle releaseId={release.id} listened={release.listened} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <form action={deleteArtist.bind(null, artist.id)} className="pt-4">
+      <form action={deleteArtist.bind(null, artist.id)} className="border-t border-line pt-6">
         <ConfirmDeleteButton artistName={artist.name} />
       </form>
     </div>

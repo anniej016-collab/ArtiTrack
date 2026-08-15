@@ -7,6 +7,7 @@ import {
   type ImportState,
   type SearchState,
 } from "@/lib/actions";
+import { CheckIcon, VinylIcon } from "@/components/icons";
 
 const emptySearch: SearchState = { query: "", results: [], error: null };
 const emptyImport: ImportState = { message: null, error: null };
@@ -19,34 +20,41 @@ function ImportButton({
   const [state, action, pending] = useActionState(importArtistAction, emptyImport);
 
   if (state.message) {
-    return <span className="text-xs text-emerald-600 dark:text-emerald-400">Added</span>;
+    return (
+      <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-success">
+        <CheckIcon className="size-3.5" /> Added
+      </span>
+    );
   }
 
   return (
-    <form action={action} className="flex shrink-0 items-center gap-2">
+    <form action={action} className="flex shrink-0 items-center gap-2.5">
       <input type="hidden" name="externalId" value={artist.externalId} />
       <input type="hidden" name="name" value={artist.name} />
       <input type="hidden" name="imageUrl" value={artist.imageUrl ?? ""} />
       {/* Checked by default: an artist you're adding now is usually one you've
           already been listening to, so their back catalogue shouldn't flood the queue. */}
-      <label className="flex cursor-pointer items-center gap-1.5 text-xs text-zinc-500">
+      <label
+        className="hidden cursor-pointer items-center gap-1.5 text-xs text-faint transition-colors hover:text-muted sm:flex"
+        title="Mark their existing releases as already heard"
+      >
         <input
           type="checkbox"
           name="markListened"
           defaultChecked
-          className="size-3.5 cursor-pointer"
+          className="size-3.5 cursor-pointer accent-violet-500"
         />
         Heard already
       </label>
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:opacity-90 disabled:opacity-50"
+        className="btn-primary px-3.5 py-1.5 text-xs"
       >
         {pending ? "Adding…" : "Add"}
       </button>
       {state.error && (
-        <span className="max-w-40 text-xs text-red-600">{state.error}</span>
+        <span className="max-w-36 text-xs text-red-400">{state.error}</span>
       )}
     </form>
   );
@@ -64,47 +72,47 @@ export function ArtistSearch() {
           required
           placeholder="Search for an artist…"
           aria-label="Search for an artist"
-          className="w-full rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm outline-none focus:border-black/30 dark:border-white/10 dark:focus:border-white/30"
+          className="field w-full px-4 py-2.5 text-sm"
         />
         <button
           type="submit"
           disabled={pending}
-          className="shrink-0 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:opacity-90 disabled:opacity-50"
+          className="btn-primary shrink-0 px-5 py-2.5 text-sm"
         >
-          {pending ? "Searching…" : "Search"}
+          {pending ? "…" : "Search"}
         </button>
       </form>
 
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && <p className="text-sm text-red-400">{state.error}</p>}
 
       {state.query && !pending && state.results.length === 0 && !state.error && (
-        <p className="text-sm text-zinc-500">
-          No artists found for “{state.query}”.
-        </p>
+        <p className="text-sm text-faint">No artists found for “{state.query}”.</p>
       )}
 
       {state.results.length > 0 && (
-        <ul className="flex flex-col divide-y divide-black/10 rounded-lg border border-black/10 dark:divide-white/10 dark:border-white/10">
+        <ul className="panel divide-y divide-line overflow-hidden">
           {state.results.map((artist) => (
             <li
               key={artist.externalId}
-              className="flex items-center justify-between gap-3 px-4 py-3"
+              className="row-hover flex items-center justify-between gap-3 px-4 py-3"
             >
               <div className="flex min-w-0 items-center gap-3">
                 {artist.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- provider host isn't known ahead of time
+                  /* eslint-disable-next-line @next/next/no-img-element -- provider host isn't known ahead of time */
                   <img
                     src={artist.imageUrl}
                     alt=""
-                    className="size-9 shrink-0 rounded-full object-cover"
+                    className="size-10 shrink-0 rounded-full object-cover ring-1 ring-white/10"
                   />
                 ) : (
-                  <div className="size-9 shrink-0 rounded-full bg-black/10 dark:bg-white/10" />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/5">
+                    <VinylIcon className="size-5 text-white/25" />
+                  </div>
                 )}
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{artist.name}</p>
                   {artist.albumCount !== null && (
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-faint">
                       {artist.albumCount} release{artist.albumCount === 1 ? "" : "s"}
                     </p>
                   )}
