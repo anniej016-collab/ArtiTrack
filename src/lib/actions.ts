@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
+import {
+  GROUP_MODE_COOKIE,
+  VIEW_MODE_COOKIE,
+  type ViewMode,
+} from "@/lib/view-mode";
+import type { GroupMode } from "@/lib/grouping";
 import { prisma } from "@/lib/prisma";
 import type { ReleaseType } from "@/generated/prisma/enums";
 import {
@@ -167,6 +172,16 @@ export async function syncAllAction() {
 export async function setViewMode(mode: ViewMode) {
   const store = await cookies();
   store.set(VIEW_MODE_COOKIE, mode, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+  revalidatePath("/");
+}
+
+export async function setGroupMode(mode: GroupMode) {
+  const store = await cookies();
+  store.set(GROUP_MODE_COOKIE, mode, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",

@@ -9,9 +9,14 @@ import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
 import { ReleaseCard, type ReleaseCardData } from "@/components/ReleaseCard";
 import { ArtistCard, type ArtistCardData } from "@/components/ArtistCard";
 import { ViewToggle } from "@/components/ViewToggle";
+import { GroupToggle } from "@/components/GroupToggle";
 import { VinylIcon } from "@/components/icons";
-import { getViewMode, type ViewMode } from "@/lib/view-mode";
+import { getGroupMode, getViewMode, type ViewMode } from "@/lib/view-mode";
+import { groupReleases } from "@/lib/grouping";
 import { formatDate } from "@/lib/format";
+
+/** Grouping only helps if the queue isn't silently truncated first. */
+const TO_LISTEN_LIMIT = 200;
 
 // Always read live data, and keep the database out of the build step.
 export const dynamic = "force-dynamic";
@@ -60,7 +65,13 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-function ReleaseRow({ release }: { release: ReleaseCardData }) {
+function ReleaseRow({
+  release,
+  showArtist = true,
+}: {
+  release: ReleaseCardData;
+  showArtist?: boolean;
+}) {
   return (
     <li className="row-hover flex items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
@@ -69,7 +80,7 @@ function ReleaseRow({ release }: { release: ReleaseCardData }) {
           <ReleaseTypeBadge type={release.type} />
         </div>
         <p className="mt-1 truncate text-xs text-faint">
-          {release.artist && (
+          {showArtist && release.artist && (
             <>
               <Link
                 href={`/artists/${release.artistId}`}
@@ -88,12 +99,20 @@ function ReleaseRow({ release }: { release: ReleaseCardData }) {
   );
 }
 
-function ReleaseGroup({ releases, mode }: { releases: ReleaseCardData[]; mode: ViewMode }) {
+function ReleaseGroup({
+  releases,
+  mode,
+  showArtist = true,
+}: {
+  releases: ReleaseCardData[];
+  mode: ViewMode;
+  showArtist?: boolean;
+}) {
   if (mode === "list") {
     return (
       <ul className="panel divide-y divide-line overflow-hidden">
         {releases.map((release) => (
-          <ReleaseRow key={release.id} release={release} />
+          <ReleaseRow key={release.id} release={release} showArtist={showArtist} />
         ))}
       </ul>
     );
@@ -102,7 +121,7 @@ function ReleaseGroup({ releases, mode }: { releases: ReleaseCardData[]; mode: V
   return (
     <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
       {releases.map((release) => (
-        <ReleaseCard key={release.id} release={release} showArtist />
+        <ReleaseCard key={release.id} release={release} showArtist={showArtist} />
       ))}
     </ul>
   );
@@ -158,9 +177,18 @@ export default async function Home() {
     _count: { select: { releases: true } },
   } as const;
 
-  const [viewMode, activeArtists, pausedArtists, toListen, recentlyListened, heardCount] =
-    await Promise.all([
+  const [
+    viewMode,
+    groupMode,
+    activeArtists,
+    pausedArtists,
+    toListen,
+    toListenTotal,
+    recentlyListened,
+    heardCount,
+  ] = await Promise.all([
       getViewMode(),
+      getGroupMode(),
       prisma.artist.findMany({
         where: { status: "ACTIVE" },
         orderBy: { name: "asc" },
@@ -174,8 +202,11 @@ export default async function Home() {
       prisma.release.findMany({
         where: { listened: false, artist: { status: "ACTIVE" } },
         orderBy: { releaseDate: "desc" },
-        take: 16,
+        take: TO_LISTEN_LIMIT,
         include: { artist: { select: { name: true } } },
+      }),
+      prisma.release.count({
+        where: { listened: false, artist: { status: "ACTIVE" } },
       }),
       // Only releases marked by hand, which is what carries a date. An imported
       // back catalogue is listened but undated, and was never "recent".
@@ -239,9 +270,10 @@ export default async function Home() {
       )}
 
       <section>
-        <SectionHeading title="To listen" count={toListen.length}>
+        <SectionHeading title="To listen" count={toListenTotal}>
           {syncableCount > 0 && <SyncAllButton />}
         </SectionHeading>
+
         {toListen.length === 0 ? (
           <EmptyState
             message={
@@ -251,7 +283,51 @@ export default async function Home() {
             }
           />
         ) : (
-          <ReleaseGroup releases={toListen} mode={viewMode} />
+          <>
+            {toListen.length > 1 && (
+              <div className="mb-4">
+                <GroupToggle current={groupMode} />
+              </div>
+            )}
+
+            {groupMode === "none" ? (
+              <ReleaseGroup releases={toListen} mode={viewMode} />
+            ) : (
+              <div className="flex flex-col gap-7">
+                {groupReleases(toListen, groupMode).map((group) => (
+                  <div key={group.key}>
+                    <h3 className="mb-2.5 flex items-baseline gap-2">
+                      {group.artistId ? (
+                        <Link
+                          href={`/artists/${group.artistId}`}
+                          className="font-display text-base font-semibold tracking-tight transition-colors hover:text-accent"
+                        >
+                          {group.label}
+                        </Link>
+                      ) : (
+                        <span className="font-display text-base font-semibold tracking-tight">
+                          {group.label}
+                        </span>
+                      )}
+                      <span className="text-xs text-faint">{group.items.length}</span>
+                    </h3>
+                    {/* The heading already names the artist when grouped that way. */}
+                    <ReleaseGroup
+                      releases={group.items}
+                      mode={viewMode}
+                      showArtist={groupMode !== "artist"}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {toListenTotal > toListen.length && (
+              <p className="mt-4 text-xs text-faint">
+                Showing the {toListen.length} most recent of {toListenTotal}.
+              </p>
+            )}
+          </>
         )}
       </section>
 

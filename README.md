@@ -13,6 +13,9 @@ losing their history.
 - **Mark releases as listened.** Anything unlistened from an artist you follow sits in
   the **To listen** queue on the home page. Marking it clears it from the queue; you can
   always un-mark it.
+- **Group the To listen queue** by artist or by release month, so it's clear whose
+  backlog is stacking up. Month headings carry the year only when the queue spans more
+  than one.
 - **Switch between cards and a list** on the home page. Card view shows album art for
   releases and photos for artists; list view is text-only. The choice is stored in a
   cookie, so the server renders the right layout straight away and it survives closing
