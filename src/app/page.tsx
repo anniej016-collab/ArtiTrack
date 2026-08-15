@@ -10,6 +10,7 @@ import { ReleaseCard, type ReleaseCardData } from "@/components/ReleaseCard";
 import { ArtistCard, type ArtistCardData } from "@/components/ArtistCard";
 import { ViewToggle } from "@/components/ViewToggle";
 import { GroupToggle } from "@/components/GroupToggle";
+import { SectionNav } from "@/components/SectionNav";
 import { VinylIcon } from "@/components/icons";
 import { getGroupMode, getViewMode, type ViewMode } from "@/lib/view-mode";
 import { groupReleases } from "@/lib/grouping";
@@ -20,19 +21,6 @@ const TO_LISTEN_LIMIT = 200;
 
 // Always read live data, and keep the database out of the build step.
 export const dynamic = "force-dynamic";
-
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="panel px-4 py-3">
-      {/* Body font for figures: the display face's flagged "1" collides with a
-          following digit at this size. */}
-      <p className="font-sans text-2xl font-semibold tabular-nums tracking-tight">
-        {value}
-      </p>
-      <p className="mt-0.5 text-xs text-faint">{label}</p>
-    </div>
-  );
-}
 
 function SectionHeading({
   title,
@@ -118,10 +106,17 @@ function ReleaseGroup({
     );
   }
 
+  // Denser than the artist page: here the grid shares the screen with three
+  // other sections, so tiles stay small enough to leave room for them.
   return (
-    <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+    <ul className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
       {releases.map((release) => (
-        <ReleaseCard key={release.id} release={release} showArtist={showArtist} />
+        <ReleaseCard
+          key={release.id}
+          release={release}
+          showArtist={showArtist}
+          compact
+        />
       ))}
     </ul>
   );
@@ -158,7 +153,7 @@ function ArtistGroup({
   }
 
   return (
-    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
       {artists.map((artist) => (
         <ArtistCard key={artist.id} artist={artist} />
       ))}
@@ -224,23 +219,24 @@ export default async function Home() {
   ).length;
   const hasLibrary = activeArtists.length > 0 || pausedArtists.length > 0;
 
-  return (
-    <div className="flex flex-col gap-12">
-      <section className="pt-2">
-        <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-          Everything you&apos;re
-          <span className="block bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">
-            listening for.
-          </span>
-        </h1>
-        <p className="mt-3 max-w-md text-sm text-muted">
-          Follow an artist and their releases arrive on their own. Pause anyone you&apos;ve
-          moved on from — their history stays.
-        </p>
+  const sections = [
+    "to-listen",
+    ...(recentlyListened.length > 0 ? ["recently-listened"] : []),
+    ...(activeArtists.length > 0 ? ["following"] : []),
+    ...(pausedArtists.length > 0 ? ["paused"] : []),
+  ];
 
-        <div className="mt-6 rounded-2xl border border-line bg-gradient-to-b from-white/6 to-transparent p-4">
+  return (
+    <div className={`flex flex-col ${hasLibrary ? "gap-8" : "gap-12"}`}>
+      {/*
+        The full hero is a first-run welcome. Once there's a library to look at,
+        it stops earning ~400px at the top of every visit and collapses to a
+        search box, so the sections below start near the fold.
+      */}
+      {hasLibrary ? (
+        <section className="pt-1">
           <ArtistSearch />
-          <details className="group mt-3">
+          <details className="group mt-2.5">
             <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-faint transition-colors hover:text-muted">
               <span className="transition-transform group-open:rotate-90">›</span>
               Can&apos;t find them? Add by hand
@@ -249,27 +245,62 @@ export default async function Home() {
               <AddArtistForm />
             </div>
           </details>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="pt-2">
+          <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+            Everything you&apos;re
+            <span className="block bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">
+              listening for.
+            </span>
+          </h1>
+          <p className="mt-3 max-w-md text-sm text-muted">
+            Follow an artist and their releases arrive on their own. Pause anyone
+            you&apos;ve moved on from — their history stays.
+          </p>
+
+          <div className="mt-6 rounded-2xl border border-line bg-gradient-to-b from-white/6 to-transparent p-4">
+            <ArtistSearch />
+            <details className="group mt-3">
+              <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-faint transition-colors hover:text-muted">
+                <span className="transition-transform group-open:rotate-90">›</span>
+                Can&apos;t find them? Add by hand
+              </summary>
+              <div className="mt-3">
+                <AddArtistForm />
+              </div>
+            </details>
+          </div>
+        </section>
+      )}
 
       {hasLibrary && (
         <>
-          <section className="grid grid-cols-3 gap-3">
-            <Stat value={activeArtists.length} label="Following" />
-            <Stat value={toListen.length} label="To listen" />
-            <Stat value={heardCount} label="Heard" />
-          </section>
-
-          <div className="-mb-6 flex items-center justify-between gap-3">
-            <h2 className="font-display text-lg font-semibold tracking-tight">
-              Your library
-            </h2>
+          <div className="-mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <div className="flex items-baseline gap-2.5">
+              <h2 className="font-display text-lg font-semibold tracking-tight">
+                Your library
+              </h2>
+              {/* Counts inline rather than as tiles: same information, a fraction
+                  of the vertical space. */}
+              <p className="text-xs text-faint">
+                {activeArtists.length} following
+                <span className="mx-1 opacity-40">·</span>
+                {toListenTotal} to listen
+                <span className="mx-1 opacity-40">·</span>
+                {heardCount} heard
+              </p>
+            </div>
             <ViewToggle current={viewMode} />
+          </div>
+
+          <div className="-mb-6">
+            <SectionNav available={sections} />
           </div>
         </>
       )}
 
-      <section>
+      <section id="to-listen" className="scroll-mt-28">
         <SectionHeading title="To listen" count={toListenTotal}>
           {syncableCount > 0 && <SyncAllButton />}
         </SectionHeading>
@@ -293,31 +324,38 @@ export default async function Home() {
             {groupMode === "none" ? (
               <ReleaseGroup releases={toListen} mode={viewMode} />
             ) : (
-              <div className="flex flex-col gap-7">
+              <div className="flex flex-col gap-5">
                 {groupReleases(toListen, groupMode).map((group) => (
-                  <div key={group.key}>
-                    <h3 className="mb-2.5 flex items-baseline gap-2">
-                      {group.artistId ? (
+                  // Open by default, but foldable: a long queue shouldn't push
+                  // the rest of the page out of reach.
+                  <details key={group.key} open className="group/fold">
+                    <summary className="mb-2.5 flex cursor-pointer list-none items-baseline gap-2">
+                      <span
+                        aria-hidden="true"
+                        className="text-faint transition-transform group-open/fold:rotate-90"
+                      >
+                        ›
+                      </span>
+                      <span className="font-display text-base font-semibold tracking-tight">
+                        {group.label}
+                      </span>
+                      <span className="text-xs text-faint">{group.items.length}</span>
+                      {group.artistId && (
                         <Link
                           href={`/artists/${group.artistId}`}
-                          className="font-display text-base font-semibold tracking-tight transition-colors hover:text-accent"
+                          className="ml-auto text-xs text-faint transition-colors hover:text-accent"
                         >
-                          {group.label}
+                          Open
                         </Link>
-                      ) : (
-                        <span className="font-display text-base font-semibold tracking-tight">
-                          {group.label}
-                        </span>
                       )}
-                      <span className="text-xs text-faint">{group.items.length}</span>
-                    </h3>
+                    </summary>
                     {/* The heading already names the artist when grouped that way. */}
                     <ReleaseGroup
                       releases={group.items}
                       mode={viewMode}
                       showArtist={groupMode !== "artist"}
                     />
-                  </div>
+                  </details>
                 ))}
               </div>
             )}
@@ -332,21 +370,21 @@ export default async function Home() {
       </section>
 
       {recentlyListened.length > 0 && (
-        <section>
+        <section id="recently-listened" className="scroll-mt-28">
           <SectionHeading title="Recently listened" />
           <ReleaseGroup releases={recentlyListened} mode={viewMode} />
         </section>
       )}
 
       {activeArtists.length > 0 && (
-        <section>
+        <section id="following" className="scroll-mt-28">
           <SectionHeading title="Following" count={activeArtists.length} />
           <ArtistGroup artists={activeArtists} mode={viewMode} status="ACTIVE" />
         </section>
       )}
 
       {pausedArtists.length > 0 && (
-        <section>
+        <section id="paused" className="scroll-mt-28">
           <SectionHeading title="Paused" count={pausedArtists.length} />
           <p className="-mt-1 mb-3 text-xs text-faint">
             No new releases from these artists. Their history is untouched.

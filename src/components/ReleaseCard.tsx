@@ -21,13 +21,16 @@ export function ReleaseCard({
   release,
   showArtist = false,
   showListenedDate = false,
+  compact = false,
 }: {
   release: ReleaseCardData;
   showArtist?: boolean;
   showListenedDate?: boolean;
+  /** Denser text for the home page, where many tiles share the screen with other sections. */
+  compact?: boolean;
 }) {
   return (
-    <li className="group flex flex-col gap-2.5">
+    <li className={`group flex flex-col ${compact ? "gap-2" : "gap-2.5"}`}>
       <div className="relative aspect-square overflow-hidden rounded-xl border border-line bg-white/2">
         {release.coverUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element -- provider host isn't known ahead of time */
@@ -45,32 +48,42 @@ export function ReleaseCard({
           <CoverPlaceholder className="size-full" />
         )}
 
-        <div className="absolute right-2 top-2">
+        <div className={compact ? "absolute right-1.5 top-1.5" : "absolute right-2 top-2"}>
           <ListenedToggle
             releaseId={release.id}
             listened={release.listened}
             variant="overlay"
+            size={compact ? "sm" : "md"}
           />
         </div>
       </div>
 
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium" title={release.title}>
+        <p
+          className={`truncate font-medium ${compact ? "text-xs" : "text-sm"}`}
+          title={release.title}
+        >
           {release.title}
         </p>
 
         {showArtist && release.artist && (
           <Link
             href={`/artists/${release.artistId}`}
-            className="mt-0.5 block truncate text-xs text-muted transition-colors hover:text-accent"
+            className={`mt-0.5 block truncate text-muted transition-colors hover:text-accent ${
+              compact ? "text-[0.7rem]" : "text-xs"
+            }`}
           >
             {release.artist.name}
           </Link>
         )}
 
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div
+          className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 ${
+            compact ? "mt-1" : "mt-1.5 gap-x-2"
+          }`}
+        >
           <ReleaseTypeBadge type={release.type} />
-          <span className="text-xs text-faint">
+          <span className={compact ? "text-[0.7rem] text-faint" : "text-xs text-faint"}>
             {release.releaseDate.getUTCFullYear()}
           </span>
         </div>
