@@ -1,0 +1,55 @@
+// Prisma schema for ArtiTrack
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum FollowStatus {
+  ACTIVE
+  PAUSED
+}
+
+enum ReleaseType {
+  ALBUM
+  EP
+  SINGLE
+  OTHER
+}
+
+model Artist {
+  id       String       @id @default(cuid())
+  name     String
+  imageUrl String?
+  notes    String?
+  status   FollowStatus @default(ACTIVE)
+  pausedAt DateTime?
+
+  // Reserved for future auto-pull integration (e.g. Spotify, MusicBrainz).
+  // Not used yet — releases are entered manually for now.
+  source     String  @default("manual")
+  externalId String?
+
+  createdAt DateTime  @default(now())
+  releases  Release[]
+
+  @@index([status])
+}
+
+model Release {
+  id          String      @id @default(cuid())
+  artistId    String
+  artist      Artist      @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  title       String
+  type        ReleaseType @default(OTHER)
+  releaseDate DateTime
+  notes       String?
+  createdAt   DateTime    @default(now())
+
+  @@index([artistId])
+  @@index([releaseDate])
+}
