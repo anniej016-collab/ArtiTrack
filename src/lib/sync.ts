@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   PROVIDER_KEY,
   fetchArtistReleases,
+  fetchReleaseTracks,
   type ProviderRelease,
 } from "@/lib/providers/deezer";
 
@@ -139,4 +140,94 @@ export async function syncAllActive(): Promise<SyncAllResult> {
   });
 
   return { added, artistsSynced, failed };
+}
+
+/**
+ * Fetches and stores the tracklist for one release.
+ *
+ * Existing rows are updated rather than replaced, so listening marks survive a
+ * refetch. Returns null when the release has no provider to fetch from.
+ */
+export async function syncReleaseTracks(releaseId: string): Promise<number | null> {
+  const release = await prisma.release.findUnique({
+    where: { id: releaseId },
+    select: { id: true, externalId: true, artist: { select: { source: true } } },
+  });
+
+  if (!release?.externalId || release.artist.source !== PROVIDER_KEY) return null;
+
+  const tracks = await fetchReleaseTracks(release.externalId);
+
+  for (const track of tracks) {
+    await prisma.track.upsert({
+      where: {
+        releaseId_externalId: { releaseId: release.id, externalId: track.externalId },
+      },
+      create: {
+        releaseId: release.id,
+        externalId: track.externalId,
+        title: track.title,
+        position: track.position,
+        duration: track.duration,
+      },
+      // Never touch listened / listenedAt: that's the user's record.
+      update: {
+        title: track.title,
+        position: track.position,
+        duration: track.duration,
+      },
+    });
+  }
+
+  await prisma.release.update({
+    where: { id: release.id },
+    data: { tracksSyncedAt: new Date() },
+  });
+
+  return tracks.length;
+}
+
+/** How many releases one "load songs" press will fetch. */
+export const TRACK_BATCH_SIZE = 12;
+
+export type TrackBatchResult = {
+  fetched: number;
+  remaining: number;
+  failed: number;
+};
+
+/**
+ * Fills in tracklists for an artist's releases a batch at a time.
+ *
+ * Each release is a separate request, so a large discography can't be done in
+ * one go inside a serverless request budget. The caller reports what's left and
+ * the user can press again.
+ */
+export async function syncArtistTracks(artistId: string): Promise<TrackBatchResult> {
+  const pending = await prisma.release.findMany({
+    where: {
+      artistId,
+      externalId: { not: null },
+      tracksSyncedAt: null,
+      artist: { source: PROVIDER_KEY },
+    },
+    orderBy: { releaseDate: "desc" },
+    select: { id: true },
+  });
+
+  const batch = pending.slice(0, TRACK_BATCH_SIZE);
+  let fetched = 0;
+  let failed = 0;
+
+  await inBatches(batch, 4, async (release) => {
+    try {
+      const count = await syncReleaseTracks(release.id);
+      if (count !== null) fetched += 1;
+    } catch {
+      // One bad album shouldn't abandon the batch.
+      failed += 1;
+    }
+  });
+
+  return { fetched, remaining: Math.max(0, pending.length - batch.length), failed };
 }

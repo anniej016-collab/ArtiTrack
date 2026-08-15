@@ -6,6 +6,9 @@ import { redirect } from "next/navigation";
 import {
   GROUP_MODE_COOKIE,
   VIEW_MODE_COOKIE,
+  parseViewModes,
+  serialiseViewModes,
+  type SectionKey,
   type ViewMode,
 } from "@/lib/view-mode";
 import type { GroupMode } from "@/lib/grouping";
@@ -17,7 +20,13 @@ import {
   searchArtists,
   type ProviderArtist,
 } from "@/lib/providers/deezer";
-import { persistReleases, syncAllActive, syncArtist } from "@/lib/sync";
+import {
+  persistReleases,
+  syncAllActive,
+  syncArtist,
+  syncArtistTracks,
+  syncReleaseTracks,
+} from "@/lib/sync";
 
 export async function createArtist(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -169,14 +178,38 @@ export async function syncAllAction() {
   revalidatePath("/");
 }
 
-export async function setViewMode(mode: ViewMode) {
+export async function setSectionViewMode(section: SectionKey, mode: ViewMode) {
   const store = await cookies();
-  store.set(VIEW_MODE_COOKIE, mode, {
+  const current = parseViewModes(store.get(VIEW_MODE_COOKIE)?.value);
+
+  store.set(VIEW_MODE_COOKIE, serialiseViewModes({ ...current, [section]: mode }), {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
   });
   revalidatePath("/");
+}
+
+export async function setTrackListened(trackId: string, listened: boolean) {
+  const track = await prisma.track.update({
+    where: { id: trackId },
+    data: { listened, listenedAt: listened ? new Date() : null },
+    select: { releaseId: true, release: { select: { artistId: true } } },
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/releases/${track.releaseId}`);
+  revalidatePath(`/artists/${track.release.artistId}`);
+}
+
+export async function loadReleaseTracksAction(releaseId: string) {
+  await syncReleaseTracks(releaseId);
+  revalidatePath(`/releases/${releaseId}`);
+}
+
+export async function loadArtistTracksAction(artistId: string) {
+  await syncArtistTracks(artistId);
+  revalidatePath(`/artists/${artistId}`);
 }
 
 export async function setGroupMode(mode: GroupMode) {

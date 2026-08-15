@@ -21,6 +21,13 @@ export type ProviderRelease = {
   coverUrl: string | null;
 };
 
+export type ProviderTrack = {
+  externalId: string;
+  title: string;
+  position: number;
+  duration: number | null;
+};
+
 class DeezerError extends Error {}
 
 async function getJson(path: string): Promise<unknown> {
@@ -150,4 +157,39 @@ export async function fetchArtistReleases(
     seen.add(release.externalId);
     return true;
   });
+}
+
+export async function fetchReleaseTracks(
+  externalReleaseId: string,
+): Promise<ProviderTrack[]> {
+  const body = await getJson(
+    `/album/${encodeURIComponent(externalReleaseId)}/tracks?limit=200`,
+  );
+
+  const tracks = dataArray(body).flatMap((item, index) => {
+    const externalId = item["id"] === undefined ? null : String(item["id"]);
+    const title = str(item["title"]);
+    if (!externalId || !title) return [];
+
+    const position =
+      typeof item["track_position"] === "number" ? item["track_position"] : index + 1;
+
+    return [
+      {
+        externalId,
+        title,
+        position,
+        duration: typeof item["duration"] === "number" ? item["duration"] : null,
+      },
+    ];
+  });
+
+  const seen = new Set<string>();
+  return tracks
+    .filter((track) => {
+      if (seen.has(track.externalId)) return false;
+      seen.add(track.externalId);
+      return true;
+    })
+    .sort((a, b) => a.position - b.position);
 }

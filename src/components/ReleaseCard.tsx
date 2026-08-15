@@ -30,7 +30,7 @@ export function ReleaseCard({
   compact?: boolean;
 }) {
   return (
-    <li className={`group flex flex-col ${compact ? "gap-2" : "gap-2.5"}`}>
+    <li className={`group relative flex flex-col ${compact ? "gap-2" : "gap-2.5"}`}>
       <div className="relative aspect-square overflow-hidden rounded-xl border border-line bg-white/2">
         {release.coverUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element -- provider host isn't known ahead of time */
@@ -48,7 +48,10 @@ export function ReleaseCard({
           <CoverPlaceholder className="size-full" />
         )}
 
-        <div className={compact ? "absolute right-1.5 top-1.5" : "absolute right-2 top-2"}>
+        {/* Above the stretched link so it toggles instead of opening the release. */}
+        <div
+          className={`relative z-10 ${compact ? "absolute right-1.5 top-1.5" : "absolute right-2 top-2"}`}
+        >
           <ListenedToggle
             releaseId={release.id}
             listened={release.listened}
@@ -59,17 +62,21 @@ export function ReleaseCard({
       </div>
 
       <div className="min-w-0">
-        <p
-          className={`truncate font-medium ${compact ? "text-xs" : "text-sm"}`}
+        {/* Stretched over the whole tile: the cover is the obvious thing to tap. */}
+        <Link
+          href={`/releases/${release.id}`}
+          className={`block truncate font-medium transition-colors after:absolute after:inset-0 hover:text-accent ${
+            compact ? "text-xs" : "text-sm"
+          }`}
           title={release.title}
         >
           {release.title}
-        </p>
+        </Link>
 
         {showArtist && release.artist && (
           <Link
             href={`/artists/${release.artistId}`}
-            className={`mt-0.5 block truncate text-muted transition-colors hover:text-accent ${
+            className={`relative z-10 mt-0.5 block truncate text-muted transition-colors hover:text-accent ${
               compact ? "text-[0.7rem]" : "text-xs"
             }`}
           >

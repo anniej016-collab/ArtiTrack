@@ -6,16 +6,29 @@ import { StatusToggleButton } from "@/components/StatusToggleButton";
 import { SyncArtistButton } from "@/components/SyncButtons";
 import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { ReleaseCard } from "@/components/ReleaseCard";
+import { TrackList } from "@/components/TrackList";
+import { LoadArtistTracksButton } from "@/components/LoadTracksButton";
 import { VinylIcon } from "@/components/icons";
 import { deleteArtist } from "@/lib/actions";
 import { formatDate } from "@/lib/format";
 
-export default async function ArtistPage({ params }: PageProps<"/artists/[id]">) {
+export default async function ArtistPage({
+  params,
+  searchParams,
+}: PageProps<"/artists/[id]">) {
   const { id } = await params;
+  // A search param rather than a cookie: which tab you're on is about this
+  // visit, not a standing preference, and it keeps the tabs linkable.
+  const tab = (await searchParams)?.tab === "songs" ? "songs" : "releases";
 
   const artist = await prisma.artist.findUnique({
     where: { id },
-    include: { releases: { orderBy: { releaseDate: "desc" } } },
+    include: {
+      releases: {
+        orderBy: { releaseDate: "desc" },
+        include: { tracks: { orderBy: { position: "asc" } } },
+      },
+    },
   });
 
   if (!artist) notFound();
@@ -23,6 +36,15 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
   const listenedCount = artist.releases.filter((release) => release.listened).length;
   const isSyncable = artist.source !== "manual" && artist.externalId !== null;
   const isPaused = artist.status === "PAUSED";
+
+  const releasesWithSongs = artist.releases.filter(
+    (release) => release.tracks.length > 0,
+  );
+  const missingSongs = artist.releases.filter(
+    (release) => release.tracksSyncedAt === null && release.externalId !== null,
+  ).length;
+  const allTracks = artist.releases.flatMap((release) => release.tracks);
+  const heardTracks = allTracks.filter((track) => track.listened).length;
 
   return (
     <div className="flex flex-col gap-10">
@@ -103,21 +125,95 @@ export default async function ArtistPage({ params }: PageProps<"/artists/[id]">)
       </p>
 
       <section>
-        <h2 className="eyebrow mb-3">
-          Releases {artist.releases.length > 0 && `· ${artist.releases.length}`}
-        </h2>
-
-        {artist.releases.length === 0 ? (
-          <div className="panel px-5 py-12 text-center">
-            <VinylIcon className="mx-auto size-8 text-white/15" />
-            <p className="mt-3 text-sm text-muted">Nothing here yet.</p>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-0.5 rounded-full border border-line p-0.5">
+            <Link
+              href={`/artists/${artist.id}`}
+              aria-current={tab === "releases" ? "page" : undefined}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                tab === "releases"
+                  ? "bg-white/90 text-black"
+                  : "text-faint hover:text-text"
+              }`}
+            >
+              Releases · {artist.releases.length}
+            </Link>
+            <Link
+              href={`/artists/${artist.id}?tab=songs`}
+              aria-current={tab === "songs" ? "page" : undefined}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                tab === "songs" ? "bg-white/90 text-black" : "text-faint hover:text-text"
+              }`}
+            >
+              Songs{allTracks.length > 0 ? ` · ${allTracks.length}` : ""}
+            </Link>
           </div>
+
+          {tab === "songs" && allTracks.length > 0 && (
+            <p className="text-xs text-faint">
+              {heardTracks} of {allTracks.length} heard
+            </p>
+          )}
+        </div>
+
+        {tab === "releases" ? (
+          artist.releases.length === 0 ? (
+            <div className="panel px-5 py-12 text-center">
+              <VinylIcon className="mx-auto size-8 text-white/15" />
+              <p className="mt-3 text-sm text-muted">Nothing here yet.</p>
+            </div>
+          ) : (
+            <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+              {artist.releases.map((release) => (
+                <ReleaseCard key={release.id} release={release} showListenedDate />
+              ))}
+            </ul>
+          )
         ) : (
-          <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-            {artist.releases.map((release) => (
-              <ReleaseCard key={release.id} release={release} showListenedDate />
-            ))}
-          </ul>
+          <div className="flex flex-col gap-6">
+            {missingSongs > 0 && (
+              <div className="panel flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <p className="text-xs text-muted">
+                  {releasesWithSongs.length === 0
+                    ? "Song lists haven't been fetched yet."
+                    : `${missingSongs} release${missingSongs === 1 ? "" : "s"} still to fetch.`}{" "}
+                  <span className="text-faint">
+                    Each one is a separate request, so they load in batches.
+                  </span>
+                </p>
+                <LoadArtistTracksButton artistId={artist.id} remaining={missingSongs} />
+              </div>
+            )}
+
+            {releasesWithSongs.length === 0 ? (
+              missingSongs === 0 && (
+                <div className="panel flex flex-col items-center gap-3 px-5 py-10 text-center">
+                  <VinylIcon className="size-7 text-white/15" />
+                  <p className="text-sm text-muted">No songs to show.</p>
+                </div>
+              )
+            ) : (
+              releasesWithSongs.map((release) => {
+                const heard = release.tracks.filter((t) => t.listened).length;
+                return (
+                  <div key={release.id}>
+                    <div className="mb-2 flex items-baseline justify-between gap-3">
+                      <Link
+                        href={`/releases/${release.id}`}
+                        className="font-display truncate text-base font-semibold tracking-tight transition-colors hover:text-accent"
+                      >
+                        {release.title}
+                      </Link>
+                      <span className="shrink-0 text-xs text-faint">
+                        {heard}/{release.tracks.length}
+                      </span>
+                    </div>
+                    <TrackList tracks={release.tracks} />
+                  </div>
+                );
+              })
+            )}
+          </div>
         )}
       </section>
 

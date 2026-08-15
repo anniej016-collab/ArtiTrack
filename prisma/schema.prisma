@@ -65,8 +65,38 @@ model Release {
   // Null for releases entered by hand.
   externalId String?
 
+  // Tracklists are fetched per release rather than during an artist sync: one
+  // request per album would make importing a large discography very slow.
+  tracks         Track[]
+  tracksSyncedAt DateTime?
+
   @@unique([artistId, externalId])
   @@index([artistId])
   @@index([releaseDate])
+  @@index([listened])
+}
+
+model Track {
+  id        String  @id @default(cuid())
+  releaseId String
+  release   Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  title     String
+  position  Int
+  /// Length in seconds, when the provider reports one.
+  duration  Int?
+
+  // Same idea as Release.externalId: re-fetching a tracklist updates rows
+  // instead of duplicating them.
+  externalId String?
+
+  // Track-level listening is kept separate from the release's own flag, so a
+  // part-listened album stays visibly part-listened.
+  listened   Boolean   @default(false)
+  listenedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([releaseId, externalId])
+  @@index([releaseId])
   @@index([listened])
 }

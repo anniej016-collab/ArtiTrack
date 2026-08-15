@@ -12,7 +12,7 @@ import { ViewToggle } from "@/components/ViewToggle";
 import { GroupToggle } from "@/components/GroupToggle";
 import { SectionNav } from "@/components/SectionNav";
 import { VinylIcon } from "@/components/icons";
-import { getGroupMode, getViewMode, type ViewMode } from "@/lib/view-mode";
+import { getGroupMode, getViewModes, type ViewMode } from "@/lib/view-mode";
 import { groupReleases } from "@/lib/grouping";
 import { formatDate } from "@/lib/format";
 
@@ -32,14 +32,14 @@ function SectionHeading({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-3">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
       <h2 className="eyebrow">
         {title}
         {count !== undefined && count > 0 && (
           <span className="ml-1.5 text-faint/70">· {count}</span>
         )}
       </h2>
-      {children}
+      <div className="flex items-center gap-2">{children}</div>
     </div>
   );
 }
@@ -61,10 +61,17 @@ function ReleaseRow({
   showArtist?: boolean;
 }) {
   return (
-    <li className="row-hover flex items-center justify-between gap-3 px-4 py-3">
+    // Mirrors the card: the whole row opens the release, with the artist link
+    // and the heard toggle lifted above the stretched link.
+    <li className="row-hover relative flex items-center justify-between gap-3 px-4 py-3">
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-sm font-medium">{release.title}</p>
+          <Link
+            href={`/releases/${release.id}`}
+            className="truncate text-sm font-medium transition-colors after:absolute after:inset-0 hover:text-accent"
+          >
+            {release.title}
+          </Link>
           <ReleaseTypeBadge type={release.type} />
         </div>
         <p className="mt-1 truncate text-xs text-faint">
@@ -72,7 +79,7 @@ function ReleaseRow({
             <>
               <Link
                 href={`/artists/${release.artistId}`}
-                className="text-muted transition-colors hover:text-text"
+                className="relative z-10 text-muted transition-colors hover:text-text"
               >
                 {release.artist.name}
               </Link>
@@ -82,7 +89,9 @@ function ReleaseRow({
           {formatDate(release.releaseDate)}
         </p>
       </div>
-      <ListenedToggle releaseId={release.id} listened={release.listened} />
+      <div className="relative z-10">
+        <ListenedToggle releaseId={release.id} listened={release.listened} />
+      </div>
     </li>
   );
 }
@@ -135,17 +144,21 @@ function ArtistGroup({
     return (
       <ul className="panel divide-y divide-line overflow-hidden">
         {artists.map((artist) => (
+          // `relative` anchors the stretched link, so the whole row is tappable
+          // instead of just the name.
           <li
             key={artist.id}
-            className="row-hover flex items-center justify-between gap-3 px-4 py-3"
+            className="row-hover relative flex items-center justify-between gap-3 px-4 py-3"
           >
             <Link
               href={`/artists/${artist.id}`}
-              className="truncate text-sm font-medium transition-colors hover:text-accent"
+              className="min-w-0 truncate text-sm font-medium transition-colors after:absolute after:inset-0 hover:text-accent"
             >
               {artist.name}
             </Link>
-            <StatusToggleButton artistId={artist.id} status={status} />
+            <div className="relative z-10">
+              <StatusToggleButton artistId={artist.id} status={status} />
+            </div>
           </li>
         ))}
       </ul>
@@ -173,7 +186,7 @@ export default async function Home() {
   } as const;
 
   const [
-    viewMode,
+    viewModes,
     groupMode,
     activeArtists,
     pausedArtists,
@@ -182,7 +195,7 @@ export default async function Home() {
     recentlyListened,
     heardCount,
   ] = await Promise.all([
-      getViewMode(),
+      getViewModes(),
       getGroupMode(),
       prisma.artist.findMany({
         where: { status: "ACTIVE" },
@@ -233,10 +246,37 @@ export default async function Home() {
         it stops earning ~400px at the top of every visit and collapses to a
         search box, so the sections below start near the fold.
       */}
-      {hasLibrary ? (
-        <section className="pt-1">
+      <section className={hasLibrary ? "pt-1" : "pt-2"}>
+        {!hasLibrary && (
+          <>
+            <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+              Everything you&apos;re
+              <span className="block bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">
+                listening for.
+              </span>
+            </h1>
+            <p className="mt-3 max-w-md text-sm text-muted">
+              Follow an artist and their releases arrive on their own. Pause anyone
+              you&apos;ve moved on from — their history stays.
+            </p>
+          </>
+        )}
+
+        {/*
+          One instance of the search, in a stable position. Rendering it inside
+          two branches of a conditional made React unmount it the moment the
+          first artist landed and hasLibrary flipped, throwing away the results
+          you were still adding from.
+        */}
+        <div
+          className={
+            hasLibrary
+              ? ""
+              : "mt-6 rounded-2xl border border-line bg-gradient-to-b from-white/6 to-transparent p-4"
+          }
+        >
           <ArtistSearch />
-          <details className="group mt-2.5">
+          <details className={hasLibrary ? "group mt-2.5" : "group mt-3"}>
             <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-faint transition-colors hover:text-muted">
               <span className="transition-transform group-open:rotate-90">›</span>
               Can&apos;t find them? Add by hand
@@ -245,34 +285,8 @@ export default async function Home() {
               <AddArtistForm />
             </div>
           </details>
-        </section>
-      ) : (
-        <section className="pt-2">
-          <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-            Everything you&apos;re
-            <span className="block bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">
-              listening for.
-            </span>
-          </h1>
-          <p className="mt-3 max-w-md text-sm text-muted">
-            Follow an artist and their releases arrive on their own. Pause anyone
-            you&apos;ve moved on from — their history stays.
-          </p>
-
-          <div className="mt-6 rounded-2xl border border-line bg-gradient-to-b from-white/6 to-transparent p-4">
-            <ArtistSearch />
-            <details className="group mt-3">
-              <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-faint transition-colors hover:text-muted">
-                <span className="transition-transform group-open:rotate-90">›</span>
-                Can&apos;t find them? Add by hand
-              </summary>
-              <div className="mt-3">
-                <AddArtistForm />
-              </div>
-            </details>
-          </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {hasLibrary && (
         <>
@@ -291,7 +305,6 @@ export default async function Home() {
                 {heardCount} heard
               </p>
             </div>
-            <ViewToggle current={viewMode} />
           </div>
 
           <div className="-mb-6">
@@ -303,6 +316,7 @@ export default async function Home() {
       <section id="to-listen" className="scroll-mt-28">
         <SectionHeading title="To listen" count={toListenTotal}>
           {syncableCount > 0 && <SyncAllButton />}
+          <ViewToggle section="to-listen" current={viewModes["to-listen"]} />
         </SectionHeading>
 
         {toListen.length === 0 ? (
@@ -322,7 +336,7 @@ export default async function Home() {
             )}
 
             {groupMode === "none" ? (
-              <ReleaseGroup releases={toListen} mode={viewMode} />
+              <ReleaseGroup releases={toListen} mode={viewModes["to-listen"]} />
             ) : (
               <div className="flex flex-col gap-5">
                 {groupReleases(toListen, groupMode).map((group) => (
@@ -352,7 +366,7 @@ export default async function Home() {
                     {/* The heading already names the artist when grouped that way. */}
                     <ReleaseGroup
                       releases={group.items}
-                      mode={viewMode}
+                      mode={viewModes["to-listen"]}
                       showArtist={groupMode !== "artist"}
                     />
                   </details>
@@ -371,26 +385,35 @@ export default async function Home() {
 
       {recentlyListened.length > 0 && (
         <section id="recently-listened" className="scroll-mt-28">
-          <SectionHeading title="Recently listened" />
-          <ReleaseGroup releases={recentlyListened} mode={viewMode} />
+          <SectionHeading title="Recently listened">
+            <ViewToggle
+              section="recently-listened"
+              current={viewModes["recently-listened"]}
+            />
+          </SectionHeading>
+          <ReleaseGroup releases={recentlyListened} mode={viewModes["recently-listened"]} />
         </section>
       )}
 
       {activeArtists.length > 0 && (
         <section id="following" className="scroll-mt-28">
-          <SectionHeading title="Following" count={activeArtists.length} />
-          <ArtistGroup artists={activeArtists} mode={viewMode} status="ACTIVE" />
+          <SectionHeading title="Following" count={activeArtists.length}>
+            <ViewToggle section="following" current={viewModes.following} />
+          </SectionHeading>
+          <ArtistGroup artists={activeArtists} mode={viewModes.following} status="ACTIVE" />
         </section>
       )}
 
       {pausedArtists.length > 0 && (
         <section id="paused" className="scroll-mt-28">
-          <SectionHeading title="Paused" count={pausedArtists.length} />
+          <SectionHeading title="Paused" count={pausedArtists.length}>
+            <ViewToggle section="paused" current={viewModes.paused} />
+          </SectionHeading>
           <p className="-mt-1 mb-3 text-xs text-faint">
             No new releases from these artists. Their history is untouched.
           </p>
           <div className="opacity-65 transition-opacity hover:opacity-100">
-            <ArtistGroup artists={pausedArtists} mode={viewMode} status="PAUSED" />
+            <ArtistGroup artists={pausedArtists} mode={viewModes.paused} status="PAUSED" />
           </div>
         </section>
       )}

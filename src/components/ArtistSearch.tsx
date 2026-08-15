@@ -33,18 +33,21 @@ function ImportButton({
       <input type="hidden" name="name" value={artist.name} />
       <input type="hidden" name="imageUrl" value={artist.imageUrl ?? ""} />
       {/* Checked by default: an artist you're adding now is usually one you've
-          already been listening to, so their back catalogue shouldn't flood the queue. */}
+          already been listening to, so their back catalogue shouldn't flood the
+          queue. Visible on every screen size — hiding it on small ones left no
+          way to import a catalogue as unheard from a phone. */}
       <label
-        className="hidden cursor-pointer items-center gap-1.5 text-xs text-faint transition-colors hover:text-muted sm:flex"
+        className="flex cursor-pointer items-center gap-1.5 text-xs text-faint transition-colors hover:text-muted"
         title="Mark their existing releases as already heard"
       >
         <input
           type="checkbox"
           name="markListened"
           defaultChecked
-          className="size-3.5 cursor-pointer accent-violet-500"
+          className="size-3.5 shrink-0 cursor-pointer accent-violet-500"
         />
-        Heard already
+        <span className="sm:hidden">Heard</span>
+        <span className="hidden sm:inline">Heard already</span>
       </label>
       <button
         type="submit"

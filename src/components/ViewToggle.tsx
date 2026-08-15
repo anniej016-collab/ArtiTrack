@@ -1,13 +1,15 @@
-import { setViewMode } from "@/lib/actions";
+import { setSectionViewMode } from "@/lib/actions";
 import { GridIcon, ListIcon } from "@/components/icons";
-import type { ViewMode } from "@/lib/view-mode";
+import type { SectionKey, ViewMode } from "@/lib/view-mode";
 
 function Option({
+  section,
   mode,
   current,
   label,
   children,
 }: {
+  section: SectionKey;
   mode: ViewMode;
   current: ViewMode;
   label: string;
@@ -16,13 +18,13 @@ function Option({
   const active = mode === current;
 
   return (
-    <form action={setViewMode.bind(null, mode)}>
+    <form action={setSectionViewMode.bind(null, section, mode)}>
       <button
         type="submit"
         aria-label={label}
         aria-pressed={active}
         title={label}
-        className={`flex size-7 items-center justify-center rounded-full transition ${
+        className={`flex size-6 items-center justify-center rounded-full transition ${
           active ? "bg-white/90 text-black" : "text-faint hover:text-text"
         }`}
       >
@@ -32,14 +34,21 @@ function Option({
   );
 }
 
-export function ViewToggle({ current }: { current: ViewMode }) {
+/** One per section: the queue can be a list while artists stay as cards. */
+export function ViewToggle({
+  section,
+  current,
+}: {
+  section: SectionKey;
+  current: ViewMode;
+}) {
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-full border border-line p-0.5">
-      <Option mode="cards" current={current} label="Card view">
-        <GridIcon className="size-3.5" />
+    <div className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-line p-0.5">
+      <Option section={section} mode="cards" current={current} label="Card view">
+        <GridIcon className="size-3" />
       </Option>
-      <Option mode="list" current={current} label="List view">
-        <ListIcon className="size-3.5" />
+      <Option section={section} mode="list" current={current} label="List view">
+        <ListIcon className="size-3" />
       </Option>
     </div>
   );

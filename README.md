@@ -16,7 +16,11 @@ losing their history.
 - **Group the To listen queue** by artist or by release month, so it's clear whose
   backlog is stacking up. Month headings carry the year only when the queue spans more
   than one.
-- **Switch between cards and a list** on the home page. Card view shows album art for
+- **Open a release** to see its songs and tick off the ones you've heard. An artist's
+  **Songs** tab lists every track across their releases with a heard count. Tracklists
+  are fetched per release, in batches, because each one costs a separate request.
+- **Switch between cards and a list** — each home section keeps its own choice, so the
+  queue can be a list while your artists stay as cards. Card view shows album art for
   releases and photos for artists; list view is text-only. The choice is stored in a
   cookie, so the server renders the right layout straight away and it survives closing
   the tab.
@@ -85,9 +89,14 @@ Open [http://localhost:3000](http://localhost:3000).
 - `Release` — belongs to an artist; `title`, `type` (`ALBUM`/`EP`/`SINGLE`/`OTHER`),
   `releaseDate`, `coverUrl`, and `externalId`, which is what makes re-syncing
   idempotent. Hand-entered releases have a null `externalId`.
-- Listening state is `listened` (boolean) plus an optional `listenedAt`. `listened` with
-  a null `listenedAt` means "heard, date unknown" — the state an imported back catalogue
-  lands in.
+- `Track` — belongs to a release; `title`, `position`, `duration`, `externalId`. Fetched
+  on demand rather than during an artist sync, since one request per album would make
+  importing a discography very slow. `Release.tracksSyncedAt` records which have been
+  fetched.
+- Listening state is `listened` (boolean) plus an optional `listenedAt`, on both releases
+  and tracks. `listened` with a null `listenedAt` means "heard, date unknown" — the state
+  an imported back catalogue lands in. Track and release listening are independent, so a
+  part-listened album stays visibly part-listened.
 
 Pausing an artist only changes `Artist.status`. It never deletes or alters releases, and
 `syncArtist` refuses to run for a paused artist.
