@@ -13,6 +13,7 @@ import { EditArtistForm } from "@/components/EditArtistForm";
 import { VinylIcon } from "@/components/icons";
 import { deleteArtist } from "@/lib/actions";
 import { isSyncableSource, providerLabel, supportsTracks } from "@/lib/providers";
+import { IMPORT_SOURCE } from "@/lib/import/apply";
 import { formatDate } from "@/lib/format";
 
 export default async function ArtistPage({
@@ -154,7 +155,9 @@ export default async function ArtistPage({
                   ? ` Last checked ${formatDate(artist.lastSyncedAt)}.`
                   : ""
               }${canLoadTracks ? "" : " It doesn't publish song lists, so releases only."}`
-            : "Added by hand — log releases yourself below."}
+            : artist.source === IMPORT_SOURCE
+              ? "Imported from a discography file. Re-import it to bring in changes."
+              : "Added by hand — log releases yourself below."}
       </p>
 
       {/* Directly under the hero: what you think of an artist is the reason you

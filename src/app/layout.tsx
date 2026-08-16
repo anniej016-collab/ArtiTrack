@@ -59,13 +59,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <footer className="mx-auto w-full max-w-6xl px-5 pb-10 2xl:max-w-7xl">
-          <a
-            href="/api/export"
-            download
-            className="text-xs text-faint transition-colors hover:text-muted"
-          >
-            Download my data
-          </a>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <a
+              href="/api/export"
+              download
+              className="text-xs text-faint transition-colors hover:text-muted"
+            >
+              Download my data
+            </a>
+            <Link
+              href="/import"
+              className="text-xs text-faint transition-colors hover:text-muted"
+            >
+              Import a discography
+            </Link>
+          </div>
         </footer>
       </body>
     </html>

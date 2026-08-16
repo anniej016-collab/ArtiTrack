@@ -42,6 +42,8 @@ import {
 } from "@/lib/listening";
 import { parseTracklist } from "@/lib/tracklist";
 import { parseDiscoveryLines } from "@/lib/discovery";
+import { parseDiscography } from "@/lib/import/discography";
+import { applyImport } from "@/lib/import/apply";
 import { matchDiscovery } from "@/lib/discovery-match";
 import { loadLibraryIndex } from "@/lib/library-index";
 import { songKey } from "@/lib/song-identity";
@@ -529,6 +531,64 @@ export async function clearAlreadyHeardDiscoveries() {
   }
 
   revalidatePath("/check-out");
+}
+
+export type ImportDiscographyState = {
+  message: string | null;
+  error: string | null;
+  skipped: string[];
+};
+
+/**
+ * Reads a pasted discography file and writes it into the library.
+ *
+ * Safe to run again: releases are matched on a stable key from the file, so an
+ * updated copy corrects what changed and adds what's new without duplicating
+ * anything or disturbing what you've marked as heard.
+ */
+export async function importDiscographyAction(
+  _previous: ImportDiscographyState,
+  formData: FormData,
+): Promise<ImportDiscographyState> {
+  const source = String(formData.get("source") ?? "");
+  if (!source.trim()) {
+    return { message: null, error: "Paste the file's contents first.", skipped: [] };
+  }
+
+  try {
+    const { releases, skipped } = parseDiscography(source);
+    if (releases.length === 0) {
+      return { message: null, error: "No releases found in that file.", skipped };
+    }
+
+    const result = await applyImport(releases, {
+      markListened: formData.get("markListened") !== null,
+    });
+
+    revalidatePath("/", "layout");
+
+    const parts = [
+      `${result.releasesAdded} added`,
+      ...(result.releasesUpdated > 0 ? [`${result.releasesUpdated} updated`] : []),
+      ...(result.artistsAdded > 0 ? [`${result.artistsAdded} new artists`] : []),
+      ...(result.tracksWritten > 0 ? [`${result.tracksWritten} songs`] : []),
+    ];
+
+    return {
+      message:
+        result.releasesAdded === 0 && result.releasesUpdated === 0
+          ? `Already up to date — all ${releases.length} releases were already in.`
+          : `Imported ${releases.length} releases: ${parts.join(", ")}.`,
+      error: null,
+      skipped,
+    };
+  } catch (error) {
+    return {
+      message: null,
+      error: error instanceof Error ? error.message : "That file couldn't be read.",
+      skipped: [],
+    };
+  }
 }
 
 export async function deleteArtist(artistId: string) {

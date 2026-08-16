@@ -59,6 +59,13 @@ losing their history.
   heard is hand-entered and can't be re-fetched from anywhere, so it's worth keeping a
   copy.
 - **Install it to a home screen** — it opens without browser chrome, like an app.
+- **Import a discography you keep yourself** from the link in the footer. For a catalogue
+  no music service covers properly — every unit, side project, soundtrack and solo
+  release, with tracklists and cover art. Paste the file, and its releases become artists
+  in the library. Re-import the same file whenever you update it: what changed is
+  corrected, what's new is added, a corrected title is recognised rather than duplicated,
+  and what you've marked as heard is never overwritten. Imported artists aren't synced
+  from anywhere — the file is where they come from.
 - **Keep a "Check out" list** for artists and records you don't follow but mean to hear.
   Reached from the header, and deliberately outside the library: nothing on it counts as
   following anyone and none of it lands in the To listen queue. Add one at a time, or
