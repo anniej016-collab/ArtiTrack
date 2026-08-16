@@ -8,6 +8,7 @@ import { ConfirmDeleteButton } from "@/components/ConfirmDeleteButton";
 import { ReleaseCard } from "@/components/ReleaseCard";
 import { TrackList } from "@/components/TrackList";
 import { LoadArtistTracksButton } from "@/components/LoadTracksButton";
+import { ArtistNotes } from "@/components/ArtistNotes";
 import { VinylIcon } from "@/components/icons";
 import { deleteArtist } from "@/lib/actions";
 import { formatDate } from "@/lib/format";
@@ -247,6 +248,10 @@ export default async function ArtistPage({
             )}
           </div>
         )}
+      </section>
+
+      <section>
+        <ArtistNotes artistId={artist.id} notes={artist.notes} />
       </section>
 
       <section>

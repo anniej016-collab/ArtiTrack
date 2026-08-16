@@ -5,6 +5,8 @@ import { ListenedToggle } from "@/components/ListenedToggle";
 import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
 import { TrackList } from "@/components/TrackList";
 import { LoadReleaseTracksButton } from "@/components/LoadTracksButton";
+import { RatingStars } from "@/components/RatingStars";
+import { EditReleaseForm } from "@/components/EditReleaseForm";
 import { CoverPlaceholder, VinylIcon } from "@/components/icons";
 import { formatDate } from "@/lib/format";
 
@@ -77,6 +79,10 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
             )}
           </div>
 
+          <div className="mt-3">
+            <RatingStars releaseId={release.id} rating={release.rating} />
+          </div>
+
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <ListenedToggle releaseId={release.id} listened={release.listened} />
             {canLoadTracks && release.tracks.length > 0 && (
@@ -85,6 +91,15 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
           </div>
         </div>
       </section>
+
+      {release.notes && (
+        <section>
+          <h2 className="eyebrow mb-2">Notes</h2>
+          <p className="panel whitespace-pre-wrap px-4 py-3 text-sm text-muted">
+            {release.notes}
+          </p>
+        </section>
+      )}
 
       <section>
         <h2 className="eyebrow mb-3">
@@ -109,6 +124,18 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
             {canLoadTracks && <LoadReleaseTracksButton releaseId={release.id} />}
           </div>
         )}
+      </section>
+
+      <section>
+        <details className="group">
+          <summary className="eyebrow inline-flex cursor-pointer list-none items-center gap-1.5 transition-colors hover:text-muted">
+            <span className="transition-transform group-open:rotate-90">›</span>
+            Edit this release
+          </summary>
+          <div className="mt-3">
+            <EditReleaseForm release={release} />
+          </div>
+        </details>
       </section>
     </div>
   );

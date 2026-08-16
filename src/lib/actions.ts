@@ -249,6 +249,61 @@ export async function setGroupMode(mode: GroupMode) {
   revalidatePath("/");
 }
 
+export async function updateRelease(formData: FormData) {
+  const releaseId = String(formData.get("releaseId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const releaseDateRaw = String(formData.get("releaseDate") ?? "");
+  const type = String(formData.get("type") ?? "OTHER") as ReleaseType;
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+
+  if (!releaseId || !title || !releaseDateRaw) return;
+
+  const release = await prisma.release.update({
+    where: { id: releaseId },
+    data: { title, type, releaseDate: new Date(releaseDateRaw), notes },
+    select: { artistId: true },
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/releases/${releaseId}`);
+  revalidatePath(`/artists/${release.artistId}`);
+}
+
+/** Sends the same rating twice to clear it, so one control both sets and unsets. */
+export async function setReleaseRating(releaseId: string, rating: number) {
+  const current = await prisma.release.findUnique({
+    where: { id: releaseId },
+    select: { rating: true, artistId: true },
+  });
+  if (!current) return;
+
+  await prisma.release.update({
+    where: { id: releaseId },
+    data: { rating: current.rating === rating ? null : rating },
+  });
+
+  revalidatePath(`/releases/${releaseId}`);
+  revalidatePath(`/artists/${current.artistId}`);
+}
+
+export async function deleteRelease(releaseId: string) {
+  const release = await prisma.release.delete({
+    where: { id: releaseId },
+    select: { artistId: true },
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/artists/${release.artistId}`);
+  redirect(`/artists/${release.artistId}`);
+}
+
+export async function updateArtistNotes(artistId: string, formData: FormData) {
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+
+  await prisma.artist.update({ where: { id: artistId }, data: { notes } });
+  revalidatePath(`/artists/${artistId}`);
+}
+
 export async function deleteArtist(artistId: string) {
   await prisma.artist.delete({ where: { id: artistId } });
   revalidatePath("/");

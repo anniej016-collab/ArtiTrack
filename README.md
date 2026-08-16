@@ -31,6 +31,8 @@ losing their history.
   releases and photos for artists; list view is text-only. The choice is stored in a
   cookie, so the server renders the right layout straight away and it survives closing
   the tab.
+- **Edit or delete a single release**, rate it out of five, and keep notes on it or on
+  the artist. Deleting one release leaves the artist and everything else intact.
 - **Pause updates** for an artist you no longer follow. They stop being synced, drop out
   of "Following", and their releases leave the To listen queue — but their full release
   history, including what you'd already marked as listened, stays on their page.

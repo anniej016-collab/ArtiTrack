@@ -53,6 +53,8 @@ model Release {
   type        ReleaseType @default(OTHER)
   releaseDate DateTime
   notes       String?
+  /// 1–5, or null for unrated.
+  rating      Int?
   coverUrl    String?
   createdAt   DateTime    @default(now())
 
