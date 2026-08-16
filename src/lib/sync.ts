@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { alignSongsWithRelease } from "@/lib/listening";
 import { songKey } from "@/lib/song-identity";
 import {
   SYNCABLE_SOURCES,
@@ -229,6 +230,9 @@ export async function syncReleaseTracks(releaseId: string): Promise<number | nul
   });
 
   await discardSongsWithoutTracks(release.artistId);
+  // An already-heard release means its songs have been heard, whenever they
+  // happen to arrive.
+  await alignSongsWithRelease(release.id);
 
   return tracks.length;
 }

@@ -78,25 +78,33 @@ test("the heard toggle still toggles instead of opening the release", async ({
   await expect(page.locator("#to-listen li")).toHaveCount(before - 1);
 });
 
-test("search results survive adding the first artist", async ({ page }) => {
-  // Adding the first artist flips the page out of its empty state. The search
-  // sits above that change and must not be disturbed by it, or you lose the
-  // results you were still working through.
+test("adding an artist closes the search instead of leaving it open", async ({
+  page,
+}) => {
+  /*
+   * This once asserted the opposite. The original bug was the results list
+   * disappearing on its own when adding the first artist flipped the page out
+   * of its empty state — a change happening *to* the search rather than
+   * because of it. Deliberately clearing it once an artist is in is a
+   * different thing: the query has been answered, and leaving the box filled
+   * meant emptying it by hand before anything else could be done.
+   */
   await page.goto("/");
   await page.fill('input[name="query"]', "test");
   await page.getByRole("button", { name: "Search" }).click();
   await expect(page.locator("li").filter({ hasText: "Testhead" })).toBeVisible();
 
-  const first = page.locator("li").filter({ hasText: "Testhead" }).first();
-  await first.getByRole("button", { name: "Add" }).click();
-  await first.getByText("Added").waitFor();
+  await page
+    .locator("li")
+    .filter({ hasText: "Testhead" })
+    .first()
+    .getByRole("button", { name: "Add" })
+    .click();
 
-  // The other results must still be there to add.
-  await expect(
-    page.locator("li").filter({ hasText: "Test Moscow" }).getByRole("button", {
-      name: "Add",
-    }),
-  ).toBeVisible();
+  await expect(page.getByText("Added Testhead.")).toBeVisible();
+  // The list is gone and the box is empty, ready for the next search.
+  await expect(page.locator("li").filter({ hasText: "Test Moscow" })).toHaveCount(0);
+  await expect(page.locator('input[name="query"]')).toHaveValue("");
 });
 
 test("the 'heard already' choice is reachable on a phone", async ({ page }, testInfo) => {

@@ -16,23 +16,35 @@ async function openFirstRelease(page: import("@playwright/test").Page) {
   await page.waitForURL(/\/releases\//);
 }
 
-test("a release can be renamed and its notes kept", async ({ page }) => {
+test("a release can be renamed, and renaming leaves its note alone", async ({
+  page,
+}) => {
   await openFirstRelease(page);
 
-  await page.getByText("Edit this release").click();
-  await page.fill('input[name="title"]', "Renamed By Hand");
+  // Notes are written beside the cover now, not in the edit form below.
+  await page.getByText("Add a note").click();
   await page.fill('textarea[name="notes"]', "Second half is the good half.");
-  await page.getByRole("button", { name: "Save changes" }).click();
-
-  await expect(page.getByRole("heading", { name: "Renamed By Hand" })).toBeVisible();
-  // The note shows as text; the textarea also holds it, so target the paragraph.
+  await page.getByRole("button", { name: "Save note" }).click();
   await expect(
     page.getByRole("paragraph").filter({ hasText: "Second half is the good half." }),
   ).toBeVisible();
 
-  // And it survives a reload rather than only living on screen.
+  await page.getByText("Edit this release").click();
+  await page.fill('input[name="title"]', "Renamed By Hand");
+  await page.getByRole("button", { name: "Save changes" }).click();
+
+  await expect(page.getByRole("heading", { name: "Renamed By Hand" })).toBeVisible();
+  // A form that doesn't carry the notes field must not wipe what's stored.
+  await expect(
+    page.getByRole("paragraph").filter({ hasText: "Second half is the good half." }),
+  ).toBeVisible();
+
+  // And both survive a reload rather than only living on screen.
   await page.reload();
   await expect(page.getByRole("heading", { name: "Renamed By Hand" })).toBeVisible();
+  await expect(
+    page.getByRole("paragraph").filter({ hasText: "Second half is the good half." }),
+  ).toBeVisible();
 });
 
 test("a release can be rated, and the same star clears it", async ({ page }) => {

@@ -16,9 +16,15 @@ losing their history.
 - **Mark releases as listened.** Anything unlistened from an artist you follow sits in
   the **To listen** queue on the home page. Marking it clears it from the queue; you can
   always un-mark it.
-- **Narrow the queue by release type.** Compilations and reissues arrive as ordinary
-  releases, so the queue can fill with records already heard in another form; "No
-  singles" and "Albums" cut it down. Long artist lists get a name filter.
+- **Narrow the queue by what a release actually is.** Albums, EPs, singles, deluxe
+  editions, remasters, compilations, soundtracks and live records each get a chip
+  with a count, and any of them can be switched off. Categories come from the title
+  as well as the provider's type, which only distinguishes four kinds. Only the
+  chips you actually have are shown. Long artist lists get a name filter.
+- **Hearing a release means hearing its songs**, and ticking off the last song
+  completes the release. Because a song belongs to the artist rather than to one
+  record, that reaches sideways too: hearing the deluxe edition completes the
+  standard album it shares its songs with.
 - **Group the To listen queue** by artist or by release month, so it's clear whose
   backlog is stacking up. Month headings carry the year only when the queue spans more
   than one.
@@ -38,7 +44,13 @@ losing their history.
   cookie, so the server renders the right layout straight away and it survives closing
   the tab.
 - **Edit or delete a single release**, rate it out of five, and keep notes on it or on
-  the artist. Deleting one release leaves the artist and everything else intact.
+  the artist. Notes sit at the top of the page they belong to, not behind an edit form.
+  Deleting one release leaves the artist and everything else intact.
+- **Fill in anything a catalogue doesn't supply.** Artist photos and cover art are taken
+  as links (right-click an image on the web and copy its address), names can be edited,
+  and a tracklist can be pasted in one go — numbered or not, with or without running
+  times. Hand-entered songs behave exactly like fetched ones, so hearing one still counts
+  everywhere it appears.
 - **Pause updates** for an artist you no longer follow. They stop being synced, drop out
   of "Following", and their releases leave the To listen queue — but their full release
   history, including what you'd already marked as listened, stays on their page.

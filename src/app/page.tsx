@@ -11,7 +11,7 @@ import { ArtistCard, type ArtistCardData } from "@/components/ArtistCard";
 import { ViewToggle } from "@/components/ViewToggle";
 import { GroupToggle } from "@/components/GroupToggle";
 import { SectionNav } from "@/components/SectionNav";
-import { QueueFilterToggle } from "@/components/QueueFilterToggle";
+import { QueueCategoryFilter } from "@/components/QueueCategoryFilter";
 import { ArtistFilter } from "@/components/ArtistFilter";
 import {
   CollapsibleSection,
@@ -22,13 +22,13 @@ import {
 import { VinylIcon } from "@/components/icons";
 import {
   getGroupMode,
-  getQueueFilter,
+  getHiddenCategories,
   getSectionStates,
   getViewModes,
-  queueFilterTypes,
   type SectionKey,
   type ViewMode,
 } from "@/lib/view-mode";
+import { countByCategory, releaseCategory } from "@/lib/release-category";
 import { isSyncableSource } from "@/lib/providers";
 import { groupReleases } from "@/lib/grouping";
 import { formatDate } from "@/lib/format";
@@ -200,12 +200,10 @@ export default async function Home() {
     _count: { select: { releases: true } },
   } as const;
 
-  const queueFilter = await getQueueFilter();
-  const allowedTypes = queueFilterTypes(queueFilter);
+  const hiddenCategories = await getHiddenCategories();
   const queueWhere = {
     listened: false,
     artist: { status: "ACTIVE" as const },
-    ...(allowedTypes ? { type: { in: allowedTypes } } : {}),
   };
 
   const [
@@ -214,7 +212,7 @@ export default async function Home() {
     groupMode,
     activeArtists,
     pausedArtists,
-    toListen,
+    queueCandidates,
     toListenTotal,
     recentlyListened,
     heardCount,
@@ -242,6 +240,8 @@ export default async function Home() {
         include: { artist: { select: { name: true } } },
       }),
       prisma.release.count({ where: queueWhere }),
+      // Category comes from the title as well as the type, so it can't be a SQL
+      // filter — the queue is narrowed after it is read.
       // Only releases marked by hand, which is what carries a date. An imported
       // back catalogue is listened but undated, and was never "recent".
       prisma.release.findMany({
@@ -252,6 +252,14 @@ export default async function Home() {
       }),
       prisma.release.count({ where: { listened: true } }),
     ]);
+
+  // Counts describe the whole queue, not what survives the filter, so a chip
+  // keeps its number and stays clickable after you switch it off.
+  const categoryCounts = countByCategory(queueCandidates);
+  const toListen = queueCandidates.filter(
+    (release) =>
+      !hiddenCategories.includes(releaseCategory(release.title, release.type)),
+  );
 
   const queuePreview = sectionStates["to-listen"] === "preview";
 
@@ -360,7 +368,7 @@ export default async function Home() {
           </>
         }
       >
-        {toListen.length === 0 ? (
+        {queueCandidates.length === 0 ? (
           <EmptyState
             message={
               activeArtists.length === 0
@@ -370,12 +378,20 @@ export default async function Home() {
           />
         ) : (
           <>
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              {toListen.length > 1 && <GroupToggle current={groupMode} />}
-              <QueueFilterToggle current={queueFilter} />
+            <div className="mb-4 flex flex-col gap-2.5">
+              {queueCandidates.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <GroupToggle current={groupMode} />
+                </div>
+              )}
+              <QueueCategoryFilter counts={categoryCounts} hidden={hiddenCategories} />
             </div>
 
-            {groupMode === "none" ? (
+            {/* Filtered down to nothing, which is a different situation from an
+                empty queue and needs the chips left in reach to undo. */}
+            {toListen.length === 0 ? (
+              <EmptyState message="Nothing left once those kinds are hidden." />
+            ) : groupMode === "none" ? (
               <ReleaseGroup
                 releases={toListen}
                 mode={viewModes["to-listen"]}

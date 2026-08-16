@@ -7,6 +7,8 @@ import { TrackList } from "@/components/TrackList";
 import { LoadReleaseTracksButton } from "@/components/LoadTracksButton";
 import { RatingStars } from "@/components/RatingStars";
 import { EditReleaseForm } from "@/components/EditReleaseForm";
+import { ReleaseNotes } from "@/components/ReleaseNotes";
+import { ManualTracklistForm } from "@/components/ManualTracklistForm";
 import { CoverPlaceholder, VinylIcon } from "@/components/icons";
 import { providerLabel, supportsTracks } from "@/lib/providers";
 import { formatDate } from "@/lib/format";
@@ -41,6 +43,9 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
   const heard = release.tracks.filter((track) => track.song?.listened).length;
   const canLoadTracks =
     supportsTracks(release.artist.source) && release.externalId !== null;
+  // Only hand-entered rows are editable by hand; a fetched tracklist is the
+  // provider's to replace.
+  const manualTracks = release.tracks.filter((track) => track.externalId === null);
 
   return (
     <div className="flex flex-col gap-8">
@@ -90,17 +95,10 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
               <LoadReleaseTracksButton releaseId={release.id} />
             )}
           </div>
+
+          <ReleaseNotes releaseId={release.id} notes={release.notes} />
         </div>
       </section>
-
-      {release.notes && (
-        <section>
-          <h2 className="eyebrow mb-2">Notes</h2>
-          <p className="panel whitespace-pre-wrap px-4 py-3 text-sm text-muted">
-            {release.notes}
-          </p>
-        </section>
-      )}
 
       <section>
         <h2 className="eyebrow mb-3">
@@ -128,6 +126,22 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
           </div>
         )}
       </section>
+
+      {/* Offered whenever nothing can be fetched, and as an editor once songs
+          have been typed in — the two cases the provider can't cover. */}
+      {(!canLoadTracks || manualTracks.length > 0) && (
+        <section>
+          <details className="group" open={release.tracks.length === 0}>
+            <summary className="eyebrow inline-flex cursor-pointer list-none items-center gap-1.5 transition-colors hover:text-muted">
+              <span className="transition-transform group-open:rotate-90">›</span>
+              {release.tracks.length === 0 ? "Type the songs in" : "Edit the songs"}
+            </summary>
+            <div className="mt-3">
+              <ManualTracklistForm releaseId={release.id} tracks={manualTracks} />
+            </div>
+          </details>
+        </section>
+      )}
 
       <section>
         <details className="group">

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import type { GroupMode } from "@/lib/grouping";
-import type { ReleaseType } from "@/generated/prisma/enums";
+import { RELEASE_CATEGORIES, type ReleaseCategory } from "@/lib/release-category";
 
 export type ViewMode = "cards" | "list";
 
@@ -25,11 +25,12 @@ export type SectionState = "collapsed" | "preview" | "expanded";
 export type SectionStates = Record<SectionKey, SectionState>;
 
 /**
- * Which release types the queue shows. Deezer lists compilations and reissues
- * alongside everything else, so a queue can fill with records already heard in
- * another form.
+ * Categories the queue is currently hiding.
+ *
+ * Stored as what's hidden rather than what's shown, so a category added later
+ * shows up by default instead of silently vanishing from an existing cookie.
  */
-export type QueueFilter = "all" | "no-singles" | "albums-only";
+export type HiddenCategories = ReleaseCategory[];
 
 export const VIEW_MODE_COOKIE = "artitrack_views";
 export const GROUP_MODE_COOKIE = "artitrack_group";
@@ -100,17 +101,38 @@ export async function getSectionStates(): Promise<SectionStates> {
   return parseSectionStates(store.get(SECTION_STATE_COOKIE)?.value);
 }
 
-export async function getQueueFilter(): Promise<QueueFilter> {
-  const store = await cookies();
-  const value = store.get(QUEUE_FILTER_COOKIE)?.value;
-  return value === "no-singles" || value === "albums-only" ? value : "all";
+/**
+ * Unknown names are dropped, which is also how the previous filter's values
+ * ("no-singles", "albums-only") retire themselves: they name no category, so an
+ * old cookie simply reads as nothing hidden.
+ */
+export function parseHiddenCategories(raw: string | undefined): HiddenCategories {
+  const known = new Set<string>(RELEASE_CATEGORIES);
+  const hidden = (raw ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value): value is ReleaseCategory => known.has(value));
+
+  return [...new Set(hidden)];
 }
 
-/** Release types a queue filter admits, or undefined for no restriction. */
-export function queueFilterTypes(filter: QueueFilter): ReleaseType[] | undefined {
-  if (filter === "albums-only") return ["ALBUM"];
-  if (filter === "no-singles") return ["ALBUM", "EP"];
-  return undefined;
+export function serialiseHiddenCategories(hidden: HiddenCategories): string {
+  return [...new Set(hidden)].join(",");
+}
+
+/** Flipping one category on or off, leaving the rest as they were. */
+export function toggleHiddenCategory(
+  hidden: HiddenCategories,
+  category: ReleaseCategory,
+): HiddenCategories {
+  return hidden.includes(category)
+    ? hidden.filter((value) => value !== category)
+    : [...hidden, category];
+}
+
+export async function getHiddenCategories(): Promise<HiddenCategories> {
+  const store = await cookies();
+  return parseHiddenCategories(store.get(QUEUE_FILTER_COOKIE)?.value);
 }
 
 export async function getGroupMode(): Promise<GroupMode> {

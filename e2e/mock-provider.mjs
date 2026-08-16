@@ -60,7 +60,12 @@ const ALBUMS = {
     album(2002, "Magical Test", "2025-05-10", "album"),
   ],
   501: [album(3001, "Untitled (Test)", "2026-06-19", "album")],
-  502: [album(4001, "Cinema One", "2026-04-01", "album")],
+  // Exactly two kinds, so a test can hide every category it has without a
+  // dozen clicks.
+  502: [
+    album(4001, "Cinema One", "2026-04-01", "album"),
+    album(4005, "Cinema Cut", "2026-04-20", "single"),
+  ],
   503: [album(4002, "Orchestra One", "2026-03-01", "album")],
   504: [album(4003, "Quartet One", "2026-02-01", "album")],
   505: [album(4004, "Ensemble One", "2026-01-01", "album")],

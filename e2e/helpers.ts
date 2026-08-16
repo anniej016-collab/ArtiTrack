@@ -1,5 +1,5 @@
 import { Client } from "pg";
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 const connectionString =
   process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
@@ -41,7 +41,41 @@ export async function addArtist(
   else await checkbox.uncheck();
 
   await row.getByRole("button", { name: "Add" }).click();
-  await row.getByText("Added").waitFor();
+  // Adding clears the search and replaces it with a confirmation.
+  await page.getByText(`Added ${name}.`).waitFor();
+}
+
+/**
+ * Presses "load songs" until nothing is left to fetch.
+ *
+ * Tracklists arrive a batch at a time, and a batch can come back short if a
+ * request fails — which is swallowed by design. Waiting for the button to go
+ * away is the only signal that the whole discography is really in.
+ */
+export async function loadAllTracks(page: Page) {
+  const tab = page.getByRole("link", { name: /^Songs/ });
+  await tab.click();
+  // The tab marks itself current once its content is on screen. Probing for the
+  // load button before that reads the releases tab and finds nothing to do.
+  await expect(tab).toHaveAttribute("aria-current", "page");
+
+  const load = page.getByRole("button", { name: /Load songs/ });
+  // Song toggles are named after their song, in either state.
+  const toggles = page.getByRole("button", { name: /^Mark .+ heard$|, heard$/ });
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    if ((await load.count()) === 0) break;
+
+    // More songs on the page is the only trustworthy sign a batch landed;
+    // nothing navigates, so there is no load state to wait on.
+    const before = await toggles.count();
+    await load.first().click();
+    await expect.poll(async () => toggles.count(), { timeout: 30_000 }).toBeGreaterThan(
+      before,
+    );
+  }
+
+  await expect(load).toHaveCount(0);
 }
 
 /** Ids are generated, so tests find an artist by opening them from the list. */

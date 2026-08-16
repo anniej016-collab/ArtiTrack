@@ -48,12 +48,14 @@ test("the fallback's releases are honest about having no song lists", async ({
   // Nothing offers to fetch songs that can't be fetched.
   await page.getByRole("link", { name: /^Songs/ }).click();
   await expect(page.getByRole("button", { name: /Load songs/i })).toHaveCount(0);
-  await expect(page.getByText(/doesn't publish song lists/)).toBeVisible();
+  // Said both in the provenance line and in the empty song list.
+  await expect(page.getByText(/doesn't publish song lists/).first()).toBeVisible();
 
   await page.getByRole("link", { name: /Releases ·/ }).click();
   await page.getByRole("link", { name: /Field Recordings/ }).click();
   await page.waitForURL(/\/releases\//);
-  await expect(page.getByText(/doesn't publish song lists/)).toBeVisible();
+  // Said both in the provenance line and in the empty song list.
+  await expect(page.getByText(/doesn't publish song lists/).first()).toBeVisible();
 });
 
 test("a fallback artist can still be re-checked for new releases", async ({ page }) => {

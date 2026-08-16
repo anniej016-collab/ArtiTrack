@@ -14,7 +14,7 @@ export function EditReleaseForm({
     title: string;
     type: string;
     releaseDate: Date;
-    notes: string | null;
+    coverUrl: string | null;
   };
 }) {
   return (
@@ -75,21 +75,26 @@ export function EditReleaseForm({
           </div>
         </div>
 
+        {/* Notes are edited beside the cover at the top of the page, so they
+            aren't repeated here — two editors for one field would race. */}
         <div>
           <label
-            htmlFor="edit-notes"
+            htmlFor="edit-cover"
             className="mb-1.5 block text-xs font-medium text-muted"
           >
-            Notes
+            Cover art link
           </label>
-          <textarea
-            id="edit-notes"
-            name="notes"
-            rows={3}
-            defaultValue={release.notes ?? ""}
-            placeholder="Anything you want to remember about this one."
-            className="field w-full resize-y px-3 py-2 text-sm"
+          <input
+            id="edit-cover"
+            name="coverUrl"
+            type="url"
+            defaultValue={release.coverUrl ?? ""}
+            placeholder="https://…"
+            className="field w-full px-3 py-2 text-sm"
           />
+          <p className="mt-1.5 text-xs text-faint">
+            Right-click a cover image on the web and copy its image address.
+          </p>
         </div>
 
         <button type="submit" className="btn-primary self-start px-4 py-2 text-sm">

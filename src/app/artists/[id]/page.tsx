@@ -9,6 +9,7 @@ import { ReleaseCard } from "@/components/ReleaseCard";
 import { TrackList } from "@/components/TrackList";
 import { LoadArtistTracksButton } from "@/components/LoadTracksButton";
 import { ArtistNotes } from "@/components/ArtistNotes";
+import { EditArtistForm } from "@/components/EditArtistForm";
 import { VinylIcon } from "@/components/icons";
 import { deleteArtist } from "@/lib/actions";
 import { isSyncableSource, providerLabel, supportsTracks } from "@/lib/providers";
@@ -156,6 +157,12 @@ export default async function ArtistPage({
             : "Added by hand — log releases yourself below."}
       </p>
 
+      {/* Directly under the hero: what you think of an artist is the reason you
+          opened their page, not a footnote to it. */}
+      <section className="-mt-6">
+        <ArtistNotes artistId={artist.id} notes={artist.notes} />
+      </section>
+
       <section>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex items-center gap-0.5 rounded-full border border-line p-0.5">
@@ -259,10 +266,6 @@ export default async function ArtistPage({
       </section>
 
       <section>
-        <ArtistNotes artistId={artist.id} notes={artist.notes} />
-      </section>
-
-      <section>
         <details className="group">
           <summary className="eyebrow inline-flex cursor-pointer list-none items-center gap-1.5 transition-colors hover:text-muted">
             <span className="transition-transform group-open:rotate-90">›</span>
@@ -270,6 +273,18 @@ export default async function ArtistPage({
           </summary>
           <div className="mt-3">
             <AddReleaseForm artistId={artist.id} />
+          </div>
+        </details>
+      </section>
+
+      <section>
+        <details className="group">
+          <summary className="eyebrow inline-flex cursor-pointer list-none items-center gap-1.5 transition-colors hover:text-muted">
+            <span className="transition-transform group-open:rotate-90">›</span>
+            Edit name or photo
+          </summary>
+          <div className="mt-3">
+            <EditArtistForm artist={artist} />
           </div>
         </details>
       </section>

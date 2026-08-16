@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseHiddenCategories,
   parseSectionStates,
   parseViewModes,
+  serialiseHiddenCategories,
   serialiseSectionStates,
   serialiseViewModes,
+  toggleHiddenCategory,
 } from "@/lib/view-mode";
 
 describe("view mode cookie", () => {
@@ -49,5 +52,33 @@ describe("section state cookie", () => {
   it("round-trips", () => {
     const states = parseSectionStates("paused:collapsed");
     expect(parseSectionStates(serialiseSectionStates(states))).toEqual(states);
+  });
+});
+
+describe("queue category filter cookie", () => {
+  it("hides nothing by default", () => {
+    expect(parseHiddenCategories(undefined)).toEqual([]);
+  });
+
+  it("retires the previous filter's values instead of choking on them", () => {
+    // "no-singles" and "albums-only" name no category, so an old cookie left
+    // over from the three-way toggle simply reads as nothing hidden.
+    expect(parseHiddenCategories("no-singles")).toEqual([]);
+    expect(parseHiddenCategories("albums-only")).toEqual([]);
+  });
+
+  it("keeps known categories and drops the rest", () => {
+    expect(parseHiddenCategories("single,nonsense,live")).toEqual(["single", "live"]);
+  });
+
+  it("round-trips and de-duplicates", () => {
+    expect(parseHiddenCategories(serialiseHiddenCategories(["ep", "ep"]))).toEqual([
+      "ep",
+    ]);
+  });
+
+  it("toggles one category without disturbing the others", () => {
+    expect(toggleHiddenCategory(["single"], "live")).toEqual(["single", "live"]);
+    expect(toggleHiddenCategory(["single", "live"], "single")).toEqual(["live"]);
   });
 });

@@ -49,6 +49,18 @@ export function AddReleaseForm({ artistId }: { artistId: string }) {
           />
         </div>
       </div>
+      <div>
+        <label htmlFor="coverUrl" className="mb-1.5 block text-xs font-medium text-muted">
+          Cover art link <span className="text-faint">(optional)</span>
+        </label>
+        <input
+          id="coverUrl"
+          name="coverUrl"
+          type="url"
+          placeholder="https://…"
+          className="field w-full px-3 py-2 text-sm"
+        />
+      </div>
       <button type="submit" className="btn-primary self-start px-4 py-2 text-sm">
         Log release
       </button>

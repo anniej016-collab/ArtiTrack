@@ -19,8 +19,17 @@ export function formatDuration(seconds: number | null) {
   return `${mins}:${String(secs).padStart(2, "0")}`;
 }
 
-function SongToggle({ song }: { song: { id: string; listened: boolean } }) {
-  const name = song.listened ? "Heard" : "Mark heard";
+function SongToggle({
+  song,
+  title,
+}: {
+  song: { id: string; listened: boolean };
+  title: string;
+}) {
+  // Named after the song it belongs to: a column of a dozen buttons all
+  // announcing "Mark heard" gives a screen reader no way to tell them apart,
+  // and reads the same as the release-wide toggle sitting above them.
+  const name = song.listened ? `${title}, heard` : `Mark ${title} heard`;
 
   return (
     <form action={setSongListened.bind(null, song.id, !song.listened)}>
@@ -101,7 +110,7 @@ export function TrackList({
             )}
 
             {track.song ? (
-              <SongToggle song={track.song} />
+              <SongToggle song={track.song} title={track.title} />
             ) : (
               <span className="w-7 shrink-0" aria-hidden="true" />
             )}

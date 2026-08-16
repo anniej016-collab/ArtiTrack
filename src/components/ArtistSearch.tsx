@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   importArtistAction,
   searchArtistsAction,
@@ -19,6 +19,7 @@ const emptyImport: ImportState = { message: null, error: null };
 
 function ImportButton({
   artist,
+  onImported,
 }: {
   artist: {
     source: string;
@@ -26,16 +27,15 @@ function ImportButton({
     name: string;
     imageUrl: string | null;
   };
+  onImported: (name: string) => void;
 }) {
   const [state, action, pending] = useActionState(importArtistAction, emptyImport);
 
-  if (state.message) {
-    return (
-      <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-success">
-        <CheckIcon className="size-3.5" /> Added
-      </span>
-    );
-  }
+  // Reported upward rather than shown here: once an artist is in, the whole
+  // search is finished with, and the confirmation replaces it.
+  useEffect(() => {
+    if (state.message) onImported(artist.name);
+  }, [state.message, artist.name, onImported]);
 
   return (
     <form action={action} className="flex shrink-0 items-center gap-2.5">
@@ -76,13 +76,27 @@ function ImportButton({
 
 export function ArtistSearch() {
   const [state, action, pending] = useActionState(searchArtistsAction, emptySearch);
+  /*
+   * The search is a means to an end: once the artist you were after is added,
+   * leaving the box filled and the list hanging open means clearing it out by
+   * hand before anything else can be done. Adding one closes the whole thing
+   * and says so instead.
+   */
+  const [added, setAdded] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const finished = added !== null;
 
   return (
     <div className="flex flex-col gap-3">
       <form action={action} className="flex gap-2">
         <input
           name="query"
-          defaultValue={state.query}
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setAdded(null);
+          }}
           required
           placeholder="Search for an artist…"
           aria-label="Search for an artist"
@@ -97,20 +111,32 @@ export function ArtistSearch() {
         </button>
       </form>
 
-      {state.error && <p className="text-sm text-red-400">{state.error}</p>}
-
-      {state.query && !pending && state.results.length === 0 && !state.error && (
-        <p className="text-sm text-faint">No artists found for “{state.query}”.</p>
+      {finished && (
+        <p className="flex items-center gap-1.5 text-sm font-medium text-success">
+          <CheckIcon className="size-4" /> Added {added}.
+        </p>
       )}
 
-      {state.usedFallback && state.results.length > 0 && (
+      {!finished && state.error && (
+        <p className="text-sm text-red-400">{state.error}</p>
+      )}
+
+      {!finished &&
+        state.query &&
+        !pending &&
+        state.results.length === 0 &&
+        !state.error && (
+          <p className="text-sm text-faint">No artists found for “{state.query}”.</p>
+        )}
+
+      {!finished && state.usedFallback && state.results.length > 0 && (
         <p className="text-xs text-faint">
           Not on Deezer, so these come from MusicBrainz instead — releases only, no
           artwork or song lists.
         </p>
       )}
 
-      {state.results.length > 0 && (
+      {!finished && state.results.length > 0 && (
         <ul className="panel divide-y divide-line overflow-hidden">
           {state.results.map((artist) => (
             <li
@@ -139,7 +165,13 @@ export function ArtistSearch() {
                   )}
                 </div>
               </div>
-              <ImportButton artist={artist} />
+              <ImportButton
+                artist={artist}
+                onImported={(name) => {
+                  setAdded(name);
+                  setQuery("");
+                }}
+              />
             </li>
           ))}
         </ul>

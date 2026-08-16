@@ -48,9 +48,12 @@ export function ReleaseCard({
           <CoverPlaceholder className="size-full" />
         )}
 
-        {/* Above the stretched link so it toggles instead of opening the release. */}
+        {/* Above the stretched link so it toggles instead of opening the release.
+            Only one position utility: pairing `relative` with `absolute` here let
+            `relative` win — Tailwind emits it later — which dropped the button
+            into flow, where the cover's overflow-hidden clipped it out of sight. */}
         <div
-          className={`relative z-10 ${compact ? "absolute right-1.5 top-1.5" : "absolute right-2 top-2"}`}
+          className={`absolute z-10 ${compact ? "right-1.5 top-1.5" : "right-2 top-2"}`}
         >
           <ListenedToggle
             releaseId={release.id}

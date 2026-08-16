@@ -8,11 +8,13 @@ import {
   QUEUE_FILTER_COOKIE,
   SECTION_STATE_COOKIE,
   VIEW_MODE_COOKIE,
+  parseHiddenCategories,
   parseSectionStates,
   parseViewModes,
+  serialiseHiddenCategories,
   serialiseSectionStates,
   serialiseViewModes,
-  type QueueFilter,
+  toggleHiddenCategory,
   type SectionKey,
   type SectionState,
   type ViewMode,
@@ -32,6 +34,15 @@ import {
   syncArtistTracks,
   syncReleaseTracks,
 } from "@/lib/sync";
+import {
+  alignSongsWithRelease,
+  setReleaseListenedDeep,
+  setSongListenedDeep,
+  type Touched,
+} from "@/lib/listening";
+import { parseTracklist } from "@/lib/tracklist";
+import { songKey } from "@/lib/song-identity";
+import type { ReleaseCategory } from "@/lib/release-category";
 
 export async function createArtist(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -60,12 +71,23 @@ export async function setArtistStatus(artistId: string, status: "ACTIVE" | "PAUS
   revalidatePath(`/artists/${artistId}`);
 }
 
+/**
+ * Artwork is taken as a link rather than an upload: the app stores no files, and
+ * every cover already lives at a public URL somewhere. Blank clears it.
+ */
+function imageField(formData: FormData, name: string): string | null {
+  const value = String(formData.get(name) ?? "").trim();
+  if (!value) return null;
+  return /^https?:\/\//i.test(value) ? value : null;
+}
+
 export async function addRelease(formData: FormData) {
   const artistId = String(formData.get("artistId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const releaseDateRaw = String(formData.get("releaseDate") ?? "");
   const type = String(formData.get("type") ?? "OTHER") as ReleaseType;
   const notes = String(formData.get("notes") ?? "").trim() || null;
+  const coverUrl = imageField(formData, "coverUrl");
 
   if (!artistId || !title || !releaseDateRaw) return;
 
@@ -76,6 +98,7 @@ export async function addRelease(formData: FormData) {
       type,
       releaseDate: new Date(releaseDateRaw),
       notes,
+      coverUrl,
     },
   });
 
@@ -83,17 +106,83 @@ export async function addRelease(formData: FormData) {
   revalidatePath(`/artists/${artistId}`);
 }
 
-export async function setReleaseListened(releaseId: string, listened: boolean) {
-  const release = await prisma.release.update({
+/**
+ * Adds or replaces a tracklist typed in by hand.
+ *
+ * Songs are resolved through the same identity rules as a fetched tracklist, so
+ * a hand-entered song still counts as heard wherever else it appears.
+ */
+export async function addManualTracks(releaseId: string, formData: FormData) {
+  const parsed = parseTracklist(String(formData.get("tracks") ?? ""));
+  if (parsed.length === 0) return;
+
+  const release = await prisma.release.findUnique({
     where: { id: releaseId },
-    // Marking something now is a real, dated event, unlike an imported back
-    // catalogue. Un-marking clears the date along with the flag.
-    data: { listened, listenedAt: listened ? new Date() : null },
-    select: { artistId: true },
+    select: { id: true, artistId: true },
+  });
+  if (!release) return;
+
+  // Replacing rather than appending: the box shows the current list, so what's
+  // in it when you press save is what you meant to end up with.
+  await prisma.track.deleteMany({ where: { releaseId: release.id, externalId: null } });
+
+  for (const track of parsed) {
+    const song = await resolveManualSong(release.artistId, track.title);
+    await prisma.track.create({
+      data: {
+        releaseId: release.id,
+        title: track.title,
+        position: track.position,
+        duration: track.duration,
+        songId: song.id,
+      },
+    });
+  }
+
+  await prisma.release.update({
+    where: { id: release.id },
+    data: { tracksSyncedAt: new Date() },
+  });
+
+  // A hand-entered list under an already-heard release is heard too.
+  await alignSongsWithRelease(release.id);
+  await prisma.song.deleteMany({
+    where: { artistId: release.artistId, tracks: { none: {} } },
+  });
+
+  revalidatePath("/", "layout");
+}
+
+async function resolveManualSong(artistId: string, title: string) {
+  const key = songKey(title);
+  const existing = await prisma.song.findUnique({
+    where: { artistId_key: { artistId, key } },
+  });
+  return existing ?? prisma.song.create({ data: { artistId, key, title } });
+}
+
+export async function updateArtist(artistId: string, formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return;
+
+  await prisma.artist.update({
+    where: { id: artistId },
+    data: { name, imageUrl: imageField(formData, "imageUrl") },
   });
 
   revalidatePath("/");
-  revalidatePath(`/artists/${release.artistId}`);
+  revalidatePath(`/artists/${artistId}`);
+}
+
+/** Refreshes exactly the pages a listening change reached, and no more. */
+function revalidateTouched({ artistId, releaseIds }: Touched) {
+  revalidatePath("/");
+  if (artistId) revalidatePath(`/artists/${artistId}`);
+  for (const id of releaseIds) revalidatePath(`/releases/${id}`);
+}
+
+export async function setReleaseListened(releaseId: string, listened: boolean) {
+  revalidateTouched(await setReleaseListenedDeep(releaseId, listened));
 }
 
 export type SearchState = {
@@ -224,31 +313,24 @@ export async function setSectionState(section: SectionKey, state: SectionState) 
  * together — hearing something once shouldn't have to be recorded four times.
  */
 export async function setSongListened(songId: string, listened: boolean) {
-  const song = await prisma.song.update({
-    where: { id: songId },
-    data: { listened, listenedAt: listened ? new Date() : null },
-    select: { artistId: true },
-  });
-
-  revalidatePath("/");
-  revalidatePath(`/artists/${song.artistId}`);
-  // Any release carrying this song shows a changed count.
-  for (const release of await prisma.release.findMany({
-    where: { tracks: { some: { songId } } },
-    select: { id: true },
-  })) {
-    revalidatePath(`/releases/${release.id}`);
-  }
+  revalidateTouched(await setSongListenedDeep(songId, listened));
 }
 
+/*
+ * Both of these revalidate everything rather than the page they were pressed
+ * on. A fetched tracklist can mark songs heard, which changes release pages
+ * that were already prefetched from the artist's grid — leaving those to expire
+ * on their own meant opening an album straight afterwards and being told it had
+ * no songs.
+ */
 export async function loadReleaseTracksAction(releaseId: string) {
   await syncReleaseTracks(releaseId);
-  revalidatePath(`/releases/${releaseId}`);
+  revalidatePath("/", "layout");
 }
 
 export async function loadArtistTracksAction(artistId: string) {
   await syncArtistTracks(artistId);
-  revalidatePath(`/artists/${artistId}`);
+  revalidatePath("/", "layout");
 }
 
 export async function setGroupMode(mode: GroupMode) {
@@ -261,9 +343,9 @@ export async function setGroupMode(mode: GroupMode) {
   revalidatePath("/");
 }
 
-export async function setQueueFilter(filter: QueueFilter) {
+async function writeHiddenCategories(hidden: string) {
   const store = await cookies();
-  store.set(QUEUE_FILTER_COOKIE, filter, {
+  store.set(QUEUE_FILTER_COOKIE, hidden, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
@@ -271,18 +353,39 @@ export async function setQueueFilter(filter: QueueFilter) {
   revalidatePath("/");
 }
 
+export async function toggleQueueCategory(category: ReleaseCategory) {
+  const store = await cookies();
+  const current = parseHiddenCategories(store.get(QUEUE_FILTER_COOKIE)?.value);
+  await writeHiddenCategories(
+    serialiseHiddenCategories(toggleHiddenCategory(current, category)),
+  );
+}
+
+export async function clearQueueFilter() {
+  await writeHiddenCategories("");
+}
+
 export async function updateRelease(formData: FormData) {
   const releaseId = String(formData.get("releaseId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const releaseDateRaw = String(formData.get("releaseDate") ?? "");
   const type = String(formData.get("type") ?? "OTHER") as ReleaseType;
-  const notes = String(formData.get("notes") ?? "").trim() || null;
 
   if (!releaseId || !title || !releaseDateRaw) return;
 
   const release = await prisma.release.update({
     where: { id: releaseId },
-    data: { title, type, releaseDate: new Date(releaseDateRaw), notes },
+    data: {
+      title,
+      type,
+      releaseDate: new Date(releaseDateRaw),
+      coverUrl: imageField(formData, "coverUrl"),
+      // Notes are edited beside the cover, not here, so a form that doesn't
+      // carry the field must leave what's stored alone rather than clear it.
+      ...(formData.has("notes")
+        ? { notes: String(formData.get("notes")).trim() || null }
+        : {}),
+    },
     select: { artistId: true },
   });
 
@@ -324,6 +427,13 @@ export async function updateArtistNotes(artistId: string, formData: FormData) {
 
   await prisma.artist.update({ where: { id: artistId }, data: { notes } });
   revalidatePath(`/artists/${artistId}`);
+}
+
+export async function updateReleaseNotes(releaseId: string, formData: FormData) {
+  const notes = String(formData.get("notes") ?? "").trim() || null;
+
+  await prisma.release.update({ where: { id: releaseId }, data: { notes } });
+  revalidatePath(`/releases/${releaseId}`);
 }
 
 export async function deleteArtist(artistId: string) {
