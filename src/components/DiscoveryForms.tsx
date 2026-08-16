@@ -3,7 +3,8 @@ import { addDiscovery, addDiscoveryBatch } from "@/lib/actions";
 export function AddDiscoveryForm() {
   return (
     <form action={addDiscovery} className="panel flex flex-col gap-3 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row">
+      {/* Stacked: this form lives in a narrow column beside the list. */}
+      <div className="flex flex-col gap-3">
         <div className="flex-1">
           <label
             htmlFor="d-artist"

@@ -37,14 +37,17 @@ export function QueueCategoryFilter({
               type="submit"
               aria-pressed={showing}
               title={showing ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+              /* Everything shows by default, so filling every chip in would
+                 light up the whole row and say nothing. What's switched off is
+                 the exception, so that is what's marked. */
               className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[0.7rem] font-medium transition ${
                 showing
-                  ? "border-transparent bg-white/90 text-black"
-                  : "border-line text-faint hover:text-text"
+                  ? "border-line text-text hover:border-accent/50"
+                  : "border-transparent bg-panel text-faint/70 line-through decoration-faint/50"
               }`}
             >
               {label}
-              <span className={showing ? "text-black/45" : "text-faint/70"}>
+              <span className={showing ? "text-faint" : "text-faint/50"}>
                 {counts.get(category)}
               </span>
             </button>

@@ -19,7 +19,7 @@ export function GroupToggle({ current }: { current: GroupMode }) {
               aria-pressed={active}
               title={title}
               className={`rounded-full px-2.5 py-1 text-[0.7rem] font-medium transition ${
-                active ? "bg-white/90 text-black" : "text-faint hover:text-text"
+                active ? "chip-on" : "text-muted hover:text-text"
               }`}
             >
               {label}

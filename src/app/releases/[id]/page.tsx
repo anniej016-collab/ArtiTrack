@@ -73,7 +73,7 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
           <p className="mt-1.5 text-sm text-muted">{release.artist.name}</p>
 
           <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-            <ReleaseTypeBadge type={release.type} />
+            <ReleaseTypeBadge type={release.type} title={release.title} />
             <span className="text-xs text-faint">
               {formatDate(release.releaseDate)}
             </span>

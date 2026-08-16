@@ -69,7 +69,7 @@ function ReleaseRow({
           >
             {release.title}
           </Link>
-          <ReleaseTypeBadge type={release.type} />
+          <ReleaseTypeBadge type={release.type} title={release.title} />
         </div>
         <p className="mt-1 truncate text-xs text-faint">
           {showArtist && release.artist && (
@@ -337,7 +337,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         <>
           <div className="-mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <div className="flex items-baseline gap-2.5">
-              <h2 className="font-display text-lg font-semibold tracking-tight">
+              <h2 className="font-display text-2xl font-semibold tracking-tight">
                 Your library
               </h2>
               {/* Counts inline rather than as tiles: same information, a fraction

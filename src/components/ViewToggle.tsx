@@ -25,7 +25,7 @@ function Option({
         aria-pressed={active}
         title={label}
         className={`flex size-6 items-center justify-center rounded-full transition ${
-          active ? "bg-white/90 text-black" : "text-faint hover:text-text"
+          active ? "chip-on" : "text-muted hover:text-text"
         }`}
       >
         {children}

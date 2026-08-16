@@ -80,6 +80,14 @@ catalogue is marked listened with **no date**, because the date of the import sa
 nothing about when the music was actually heard. Only pressing the button records a
 date, so "Recently listened" shows genuine recent listens rather than an import.
 
+## How it looks
+
+Dark and warm rather than the violet-to-pink gradient every streaming service
+uses — amber like a VU meter, on a ground with some brown in it. Section headings
+carry the display face at full brightness with a short accent rule, because as quiet
+uppercase labels they were indistinguishable from the small print inside them. The
+header is a two-item nav, Library and Check out, with the current one filled in.
+
 ## Deploying to Vercel
 
 1. Push this branch to GitHub (already done).

@@ -63,19 +63,19 @@ export function CollapsibleSection({
             section={section}
             next={collapsed ? "preview" : "collapsed"}
             label={collapsed ? `Expand ${title}` : `Collapse ${title}`}
-            className="-ml-1 flex size-5 shrink-0 items-center justify-center rounded text-faint transition hover:text-text"
+            className="-ml-1 flex size-5 shrink-0 items-center justify-center rounded text-muted transition hover:text-text"
           >
             <span
               aria-hidden="true"
-              className={`text-xs transition-transform ${collapsed ? "" : "rotate-90"}`}
+              className={`text-sm transition-transform ${collapsed ? "" : "rotate-90"}`}
             >
               ›
             </span>
           </StateButton>
-          <h2 className="eyebrow">
+          <h2 className="section-title">
             {title}
             {count !== undefined && count > 0 && (
-              <span className="ml-1.5 text-faint/70">· {count}</span>
+              <span className="text-sm font-medium text-faint">{count}</span>
             )}
           </h2>
         </div>

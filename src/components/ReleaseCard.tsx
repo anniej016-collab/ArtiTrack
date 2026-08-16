@@ -92,7 +92,7 @@ export function ReleaseCard({
             compact ? "mt-1" : "mt-1.5 gap-x-2"
           }`}
         >
-          <ReleaseTypeBadge type={release.type} />
+          <ReleaseTypeBadge type={release.type} title={release.title} />
           <span className={compact ? "text-[0.7rem] text-faint" : "text-xs text-faint"}>
             {release.releaseDate.getUTCFullYear()}
           </span>

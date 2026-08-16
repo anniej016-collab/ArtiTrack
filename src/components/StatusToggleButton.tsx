@@ -23,7 +23,7 @@ export function StatusToggleButton({
         className={
           status === "ACTIVE"
             ? "btn-ghost px-3 py-1.5 text-xs font-medium"
-            : "rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-white"
+            : "chip-on rounded-full px-3 py-1.5 text-xs transition hover:brightness-110"
         }
       >
         {label}

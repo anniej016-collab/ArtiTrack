@@ -19,6 +19,18 @@ async function openPaste(page: import("@playwright/test").Page) {
   await expect(box).toBeVisible();
 }
 
+/**
+ * A section heading and its count. They are separate elements now that the
+ * heading carries the display face, so match on the accessible name.
+ */
+function sectionHeading(
+  page: import("@playwright/test").Page,
+  label: string,
+  count: number,
+) {
+  return page.getByRole("heading", { name: `${label} ${count}` });
+}
+
 test("the list is reachable from anywhere and starts empty", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: "Check out" }).click();
@@ -38,11 +50,11 @@ test("something can be added, ticked off and removed", async ({ page }) => {
 
   await expect(page.getByText("Space 1.8")).toBeVisible();
   await expect(page.getByText(/Nala Sinephro.*Recommended by a friend/)).toBeVisible();
-  await expect(page.getByText("To hear · 1")).toBeVisible();
+  await expect(sectionHeading(page, "To hear", 1)).toBeVisible();
 
   await page.getByRole("button", { name: "Mark Space 1.8 heard" }).click();
-  await expect(page.getByText("Heard · 1")).toBeVisible();
-  await expect(page.getByText("To hear · 1")).toHaveCount(0);
+  await expect(sectionHeading(page, "Heard", 1)).toBeVisible();
+  await expect(sectionHeading(page, "To hear", 1)).toHaveCount(0);
 
   await page.getByRole("button", { name: "Remove Space 1.8" }).click();
   await expect(page.getByText("Nothing on the list yet.")).toBeVisible();
@@ -58,7 +70,7 @@ test("a whole playlist can be pasted in", async ({ page }) => {
   );
   await page.getByRole("button", { name: "Add them all" }).click();
 
-  await expect(page.getByText("To hear · 3")).toBeVisible();
+  await expect(sectionHeading(page, "To hear", 3)).toBeVisible();
   await expect(page.getByText("Spirit 2.0")).toBeVisible();
   // A line with no dash is the artist on their own.
   await expect(page.getByText("Nala Sinephro", { exact: true })).toBeVisible();
@@ -70,7 +82,7 @@ test("pasting an updated playlist adds only what is new", async ({ page }) => {
 
   await page.fill('textarea[name="lines"]', "Sampha - Spirit 2.0\nYaya Bey - Karma");
   await page.getByRole("button", { name: "Add them all" }).click();
-  await expect(page.getByText("To hear · 2")).toBeVisible();
+  await expect(sectionHeading(page, "To hear", 2)).toBeVisible();
 
   // The same list with one more on the end.
   await openPaste(page);
@@ -80,7 +92,7 @@ test("pasting an updated playlist adds only what is new", async ({ page }) => {
   );
   await page.getByRole("button", { name: "Add them all" }).click();
 
-  await expect(page.getByText("To hear · 3")).toBeVisible();
+  await expect(sectionHeading(page, "To hear", 3)).toBeVisible();
 });
 
 test("everything heard can be cleared in one go", async ({ page }) => {
@@ -90,13 +102,13 @@ test("everything heard can be cleared in one go", async ({ page }) => {
   await page.getByRole("button", { name: "Add them all" }).click();
 
   await page.getByRole("button", { name: "Mark Spirit 2.0 heard" }).click();
-  await expect(page.getByText("Heard · 1")).toBeVisible();
+  await expect(sectionHeading(page, "Heard", 1)).toBeVisible();
 
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Clear these" }).click();
 
-  await expect(page.getByText("Heard · 1")).toHaveCount(0);
-  await expect(page.getByText("To hear · 1")).toBeVisible();
+  await expect(sectionHeading(page, "Heard", 1)).toHaveCount(0);
+  await expect(sectionHeading(page, "To hear", 1)).toBeVisible();
 });
 
 test("Follow hands the name to the tracker's own search", async ({ page }) => {
@@ -192,13 +204,13 @@ test("a record already ticked off in the tracker is flagged and clearable", asyn
   await page.getByRole("button", { name: "Add them all" }).click();
 
   await expect(page.getByText("Already heard", { exact: true })).toHaveCount(1);
-  await expect(page.getByText("To hear · 2")).toBeVisible();
+  await expect(sectionHeading(page, "To hear", 2)).toBeVisible();
 
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: /Remove 1 already heard/ }).click();
 
   // Only the one the tracker knew about goes; the genuinely new lead stays.
-  await expect(page.getByText("To hear · 1")).toBeVisible();
+  await expect(sectionHeading(page, "To hear", 1)).toBeVisible();
   await expect(page.getByText("A New Thing")).toBeVisible();
   await expect(page.getByText("In Testing")).toHaveCount(0);
 });

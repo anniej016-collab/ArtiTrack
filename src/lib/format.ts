@@ -5,10 +5,3 @@ export function formatDate(date: Date) {
     day: "numeric",
   });
 }
-
-export const releaseTypeLabels: Record<string, string> = {
-  ALBUM: "Album",
-  EP: "EP",
-  SINGLE: "Single",
-  OTHER: "Release",
-};

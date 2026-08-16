@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Space_Grotesk } from "next/font/google";
 import Link from "next/link";
+import { HeaderNav } from "@/components/HeaderNav";
 import { VinylIcon } from "@/components/icons";
 import "./globals.css";
 
@@ -37,7 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col">
         <header className="sticky top-0 z-20 border-b border-line bg-bg/70 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-4xl items-center gap-2.5 px-5 py-3.5">
+          <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-5 py-3.5 2xl:max-w-7xl">
             <Link href="/" className="group flex items-center gap-2.5">
               <span className="rounded-full bg-gradient-to-br from-accent to-accent-2 p-[1.5px]">
                 <span className="flex size-7 items-center justify-center rounded-full bg-bg">
@@ -51,18 +52,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 
             {/* Its own place in the header rather than a section of the home
                 page: the check-out list isn't part of the library. */}
-            <Link
-              href="/check-out"
-              className="ml-auto rounded-full px-3 py-1.5 text-xs font-medium text-faint transition-colors hover:bg-panel-hover hover:text-text"
-            >
-              Check out
-            </Link>
+            <HeaderNav />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-4xl flex-1 px-5 pb-12 pt-8">
+        <main className="mx-auto w-full max-w-6xl flex-1 px-5 pb-12 pt-8 2xl:max-w-7xl">
           {children}
         </main>
-        <footer className="mx-auto w-full max-w-4xl px-5 pb-10">
+        <footer className="mx-auto w-full max-w-6xl px-5 pb-10 2xl:max-w-7xl">
           <a
             href="/api/export"
             download

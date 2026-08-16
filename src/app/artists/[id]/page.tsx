@@ -170,9 +170,7 @@ export default async function ArtistPage({
               href={`/artists/${artist.id}`}
               aria-current={tab === "releases" ? "page" : undefined}
               className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                tab === "releases"
-                  ? "bg-white/90 text-black"
-                  : "text-faint hover:text-text"
+                tab === "releases" ? "chip-on" : "text-muted hover:text-text"
               }`}
             >
               Releases · {artist.releases.length}
@@ -181,7 +179,7 @@ export default async function ArtistPage({
               href={`/artists/${artist.id}?tab=songs`}
               aria-current={tab === "songs" ? "page" : undefined}
               className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                tab === "songs" ? "bg-white/90 text-black" : "text-faint hover:text-text"
+                tab === "songs" ? "chip-on" : "text-muted hover:text-text"
               }`}
             >
               Songs{songCount > 0 ? ` · ${songCount}` : ""}

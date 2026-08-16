@@ -5,17 +5,25 @@
  * covers read better against a dark ground, and every listening app the user
  * already knows works this way.
  */
+/*
+ * Warm rather than violet. A purple-to-pink gradient on near-black is what
+ * every streaming service already looks like; this leans on hi-fi instead —
+ * amber like a VU meter or a record label, on a ground with a little brown in
+ * it rather than blue.
+ */
 :root {
-  --bg: #09090f;
-  --panel: rgba(255, 255, 255, 0.038);
-  --panel-hover: rgba(255, 255, 255, 0.072);
-  --line: rgba(255, 255, 255, 0.09);
-  --text: #f3f3f6;
-  --muted: #9a9aab;
-  --faint: #6c6c7d;
-  --accent: #a855f7;
-  --accent-2: #ec4899;
-  --success: #34d399;
+  --bg: #0c0a08;
+  --panel: rgba(255, 247, 235, 0.04);
+  --panel-hover: rgba(255, 247, 235, 0.075);
+  --line: rgba(255, 240, 220, 0.1);
+  --text: #f6f2ea;
+  --muted: #a49b8d;
+  --faint: #756d61;
+  --accent: #e9a33c;
+  --accent-2: #d2593a;
+  /* Dark ink for text sitting on the accent, which is far too bright for white. */
+  --on-accent: #1a1206;
+  --success: #5cc98d;
 }
 
 @theme inline {
@@ -28,6 +36,7 @@
   --color-faint: var(--faint);
   --color-accent: var(--accent);
   --color-accent-2: var(--accent-2);
+  --color-on-accent: var(--on-accent);
   --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
   --font-display: var(--font-display);
@@ -41,10 +50,10 @@ body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-sans), system-ui, sans-serif;
-  /* Two soft lights up top so the page isn't a flat slab of black. */
+  /* One warm light up top, like a lamp over a turntable. */
   background-image:
-    radial-gradient(60rem 30rem at 12% -8%, rgba(168, 85, 247, 0.16), transparent 60%),
-    radial-gradient(50rem 26rem at 92% -14%, rgba(236, 72, 153, 0.13), transparent 60%);
+    radial-gradient(70rem 32rem at 18% -10%, rgba(233, 163, 60, 0.13), transparent 62%),
+    radial-gradient(46rem 24rem at 96% -16%, rgba(210, 89, 58, 0.1), transparent 62%);
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
@@ -63,19 +72,46 @@ body {
     background-color: var(--panel-hover);
   }
 
-  /* Section labels: small, spaced, quiet. */
+  /* Minor labels — sub-headings and fold-out summaries. */
   .eyebrow {
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.11em;
     text-transform: uppercase;
-    color: var(--faint);
+    color: var(--muted);
+  }
+
+  /*
+   * The headings that divide the page into its parts.
+   *
+   * These were the same quiet uppercase label as everything else, which left
+   * the four sections of the home page indistinguishable from the small print
+   * inside them. They carry the display face at full brightness, with a short
+   * accent rule, so the eye can find them while scrolling.
+   */
+  .section-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--text);
+  }
+  .section-title::before {
+    content: "";
+    width: 0.1875rem;
+    height: 1.05em;
+    border-radius: 9999px;
+    background-image: linear-gradient(to bottom, var(--accent), var(--accent-2));
   }
 
   .btn-primary {
     background-image: linear-gradient(135deg, var(--accent), var(--accent-2));
-    color: #fff;
-    font-weight: 600;
+    /* Dark ink, not white: amber is far too bright to carry white text. */
+    color: var(--on-accent);
+    font-weight: 650;
     border-radius: 0.625rem;
     transition: filter 150ms ease, opacity 150ms ease;
   }
@@ -109,8 +145,15 @@ body {
   }
   .field:focus {
     outline: none;
-    border-color: rgba(168, 85, 247, 0.6);
-    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+    border-color: rgba(233, 163, 60, 0.65);
+    box-shadow: 0 0 0 3px rgba(233, 163, 60, 0.16);
+  }
+
+  /* The selected half of a segmented control, wherever one appears. */
+  .chip-on {
+    background-color: var(--accent);
+    color: var(--on-accent);
+    font-weight: 650;
   }
 }
 
