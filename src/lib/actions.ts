@@ -5,12 +5,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   GROUP_MODE_COOKIE,
+  QUEUE_FILTER_COOKIE,
   SECTION_STATE_COOKIE,
   VIEW_MODE_COOKIE,
   parseSectionStates,
   parseViewModes,
   serialiseSectionStates,
   serialiseViewModes,
+  type QueueFilter,
   type SectionKey,
   type SectionState,
   type ViewMode,
@@ -242,6 +244,16 @@ export async function loadArtistTracksAction(artistId: string) {
 export async function setGroupMode(mode: GroupMode) {
   const store = await cookies();
   store.set(GROUP_MODE_COOKIE, mode, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+  revalidatePath("/");
+}
+
+export async function setQueueFilter(filter: QueueFilter) {
+  const store = await cookies();
+  store.set(QUEUE_FILTER_COOKIE, filter, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",

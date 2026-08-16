@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import type { GroupMode } from "@/lib/grouping";
+import type { ReleaseType } from "@/generated/prisma/enums";
 
 export type ViewMode = "cards" | "list";
 
@@ -23,9 +24,17 @@ export type ViewModes = Record<SectionKey, ViewMode>;
 export type SectionState = "collapsed" | "preview" | "expanded";
 export type SectionStates = Record<SectionKey, SectionState>;
 
+/**
+ * Which release types the queue shows. Deezer lists compilations and reissues
+ * alongside everything else, so a queue can fill with records already heard in
+ * another form.
+ */
+export type QueueFilter = "all" | "no-singles" | "albums-only";
+
 export const VIEW_MODE_COOKIE = "artitrack_views";
 export const GROUP_MODE_COOKIE = "artitrack_group";
 export const SECTION_STATE_COOKIE = "artitrack_sections";
+export const QUEUE_FILTER_COOKIE = "artitrack_queue_filter";
 
 const DEFAULT_VIEW: ViewMode = "cards";
 const DEFAULT_SECTION_STATE: SectionState = "preview";
@@ -89,6 +98,19 @@ export function serialiseSectionStates(states: SectionStates): string {
 export async function getSectionStates(): Promise<SectionStates> {
   const store = await cookies();
   return parseSectionStates(store.get(SECTION_STATE_COOKIE)?.value);
+}
+
+export async function getQueueFilter(): Promise<QueueFilter> {
+  const store = await cookies();
+  const value = store.get(QUEUE_FILTER_COOKIE)?.value;
+  return value === "no-singles" || value === "albums-only" ? value : "all";
+}
+
+/** Release types a queue filter admits, or undefined for no restriction. */
+export function queueFilterTypes(filter: QueueFilter): ReleaseType[] | undefined {
+  if (filter === "albums-only") return ["ALBUM"];
+  if (filter === "no-singles") return ["ALBUM", "EP"];
+  return undefined;
 }
 
 export async function getGroupMode(): Promise<GroupMode> {

@@ -6,6 +6,8 @@ import type { SectionKey, SectionState } from "@/lib/view-mode";
 export const PREVIEW_MIN = 6;
 /** How many rows a list-mode preview shows. */
 export const LIST_PREVIEW = 6;
+/** Below this many artists, scrolling is quicker than typing a filter. */
+export const FILTER_MIN = 5;
 
 function StateButton({
   section,

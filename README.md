@@ -13,6 +13,9 @@ losing their history.
 - **Mark releases as listened.** Anything unlistened from an artist you follow sits in
   the **To listen** queue on the home page. Marking it clears it from the queue; you can
   always un-mark it.
+- **Narrow the queue by release type.** Compilations and reissues arrive as ordinary
+  releases, so the queue can fill with records already heard in another form; "No
+  singles" and "Albums" cut it down. Long artist lists get a name filter.
 - **Group the To listen queue** by artist or by release month, so it's clear whose
   backlog is stacking up. Month headings carry the year only when the queue spans more
   than one.

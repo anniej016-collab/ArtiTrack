@@ -26,6 +26,11 @@ const ARTISTS = [
   { id: 399, name: "Testhead", picture_medium: `${SELF}/img/testhead`, nb_album: 4 },
   { id: 412, name: "Test Moscow", picture_medium: `${SELF}/img/moscow`, nb_album: 3 },
   { id: 501, name: "Test Sault", picture_medium: `${SELF}/img/sault`, nb_album: 2 },
+  // Enough names to push a list past the point where filtering is offered.
+  { id: 502, name: "Test Cinema", picture_medium: `${SELF}/img/cinema`, nb_album: 1 },
+  { id: 503, name: "Test Orchestra", picture_medium: `${SELF}/img/orchestra`, nb_album: 1 },
+  { id: 504, name: "Test Quartet", picture_medium: `${SELF}/img/quartet`, nb_album: 1 },
+  { id: 505, name: "Test Ensemble", picture_medium: `${SELF}/img/ensemble`, nb_album: 1 },
 ];
 
 const album = (id, title, date, type) => ({
@@ -53,6 +58,10 @@ const ALBUMS = {
     album(2002, "Magical Test", "2025-05-10", "album"),
   ],
   501: [album(3001, "Untitled (Test)", "2026-06-19", "album")],
+  502: [album(4001, "Cinema One", "2026-04-01", "album")],
+  503: [album(4002, "Orchestra One", "2026-03-01", "album")],
+  504: [album(4003, "Quartet One", "2026-02-01", "album")],
+  505: [album(4004, "Ensemble One", "2026-01-01", "album")],
 };
 
 /**

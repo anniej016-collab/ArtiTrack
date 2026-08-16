@@ -11,16 +11,21 @@ import { ArtistCard, type ArtistCardData } from "@/components/ArtistCard";
 import { ViewToggle } from "@/components/ViewToggle";
 import { GroupToggle } from "@/components/GroupToggle";
 import { SectionNav } from "@/components/SectionNav";
+import { QueueFilterToggle } from "@/components/QueueFilterToggle";
+import { ArtistFilter } from "@/components/ArtistFilter";
 import {
   CollapsibleSection,
+  FILTER_MIN,
   LIST_PREVIEW,
   PREVIEW_MIN,
 } from "@/components/CollapsibleSection";
 import { VinylIcon } from "@/components/icons";
 import {
   getGroupMode,
+  getQueueFilter,
   getSectionStates,
   getViewModes,
+  queueFilterTypes,
   type SectionKey,
   type ViewMode,
 } from "@/lib/view-mode";
@@ -135,16 +140,18 @@ function ArtistGroup({
   mode,
   status,
   clamp = false,
+  id,
 }: {
   artists: ArtistCardData[];
   mode: ViewMode;
   status: "ACTIVE" | "PAUSED";
   clamp?: boolean;
+  id?: string;
 }) {
   if (mode === "list") {
     const shown = clamp ? artists.slice(0, LIST_PREVIEW) : artists;
     return (
-      <ul className="panel divide-y divide-line overflow-hidden">
+      <ul id={id} className="panel divide-y divide-line overflow-hidden">
         {shown.map((artist) => (
           // `relative` anchors the stretched link, so the whole row is tappable
           // instead of just the name.
@@ -169,6 +176,7 @@ function ArtistGroup({
 
   return (
     <ul
+      id={id}
       className={`grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 ${
         clamp ? "clamp-rows" : ""
       }`}
@@ -190,6 +198,14 @@ export default async function Home() {
     externalId: true,
     _count: { select: { releases: true } },
   } as const;
+
+  const queueFilter = await getQueueFilter();
+  const allowedTypes = queueFilterTypes(queueFilter);
+  const queueWhere = {
+    listened: false,
+    artist: { status: "ACTIVE" as const },
+    ...(allowedTypes ? { type: { in: allowedTypes } } : {}),
+  };
 
   const [
     viewModes,
@@ -219,14 +235,12 @@ export default async function Home() {
         select: artistSelect,
       }),
       prisma.release.findMany({
-        where: { listened: false, artist: { status: "ACTIVE" } },
+        where: queueWhere,
         orderBy: { releaseDate: "desc" },
         take: TO_LISTEN_LIMIT,
         include: { artist: { select: { name: true } } },
       }),
-      prisma.release.count({
-        where: { listened: false, artist: { status: "ACTIVE" } },
-      }),
+      prisma.release.count({ where: queueWhere }),
       // Only releases marked by hand, which is what carries a date. An imported
       // back catalogue is listened but undated, and was never "recent".
       prisma.release.findMany({
@@ -355,11 +369,10 @@ export default async function Home() {
           />
         ) : (
           <>
-            {toListen.length > 1 && (
-              <div className="mb-4">
-                <GroupToggle current={groupMode} />
-              </div>
-            )}
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              {toListen.length > 1 && <GroupToggle current={groupMode} />}
+              <QueueFilterToggle current={queueFilter} />
+            </div>
 
             {groupMode === "none" ? (
               <ReleaseGroup
@@ -449,9 +462,17 @@ export default async function Home() {
           count={activeArtists.length}
           state={sectionStates.following}
           canShowAll={canShowAll("following", activeArtists.length)}
-          controls={<ViewToggle section="following" current={viewModes.following} />}
+          controls={
+            <>
+              {activeArtists.length >= FILTER_MIN && (
+                <ArtistFilter targetId="following-list" />
+              )}
+              <ViewToggle section="following" current={viewModes.following} />
+            </>
+          }
         >
           <ArtistGroup
+            id="following-list"
             artists={activeArtists}
             mode={viewModes.following}
             status="ACTIVE"
@@ -468,7 +489,14 @@ export default async function Home() {
           count={pausedArtists.length}
           state={sectionStates.paused}
           canShowAll={canShowAll("paused", pausedArtists.length)}
-          controls={<ViewToggle section="paused" current={viewModes.paused} />}
+          controls={
+            <>
+              {pausedArtists.length >= FILTER_MIN && (
+                <ArtistFilter targetId="paused-list" />
+              )}
+              <ViewToggle section="paused" current={viewModes.paused} />
+            </>
+          }
           note={
             <p className="-mt-1 mb-3 text-xs text-faint">
               No new releases from these artists. Their history is untouched.
@@ -477,6 +505,7 @@ export default async function Home() {
         >
           <div className="opacity-65 transition-opacity hover:opacity-100">
             <ArtistGroup
+              id="paused-list"
               artists={pausedArtists}
               mode={viewModes.paused}
               status="PAUSED"
