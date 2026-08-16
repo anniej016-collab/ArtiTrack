@@ -61,6 +61,9 @@ export function AddReleaseForm({ artistId }: { artistId: string }) {
           className="field w-full px-3 py-2 text-sm"
         />
       </div>
+      <p className="text-xs text-faint">
+        You&apos;ll land on the release itself, where the songs can be typed in.
+      </p>
       <button type="submit" className="btn-primary self-start px-4 py-2 text-sm">
         Log release
       </button>

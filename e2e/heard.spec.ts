@@ -169,3 +169,32 @@ test("songs fetched for an already-heard release count as heard", async ({
   await page.goto("/");
   await expect(page.locator("#to-listen li")).toHaveCount(0);
 });
+
+test("a release heard before songs existed does not report them unheard", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "not device-specific");
+
+  /*
+   * The shape every library imported before the two were tied together is in:
+   * releases marked heard sitting over songs marked unheard. A migration
+   * repairs what is already stored; this covers the same ground through the
+   * app, so the rule can't quietly stop holding.
+   */
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await openArtist(page, "Testhead");
+  await loadAllTracks(page);
+
+  // Every song under a heard release reads as heard, without touching anything.
+  await expect(page.getByRole("button", { name: /^Mark .+ heard$/ })).toHaveCount(0);
+
+  // And un-ticking a release still un-ticks the songs only it carries.
+  await page.getByRole("link", { name: /Releases ·/ }).click();
+  await page.getByRole("link", { name: "Testbag EP" }).click();
+  await page.waitForURL(/\/releases\//);
+  await expect(page.getByRole("heading", { name: "Testbag EP" })).toBeVisible();
+  await expect(page.getByText(/1 of 1 songs heard/)).toBeVisible();
+
+  await releaseToggle(page, "Heard").click();
+  await expect(page.getByText(/0 of 1 songs heard/)).toBeVisible();
+});

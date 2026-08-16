@@ -62,8 +62,9 @@ test("a release logged by hand can carry its own cover", async ({ page }) => {
   await page.fill('input[name="coverUrl"]', PHOTO);
   await page.getByRole("button", { name: "Log release" }).click();
 
-  await page.getByRole("link", { name: /Hand Made/ }).click();
+  // Logging drops you on the release, which is where songs are typed in.
   await page.waitForURL(/\/releases\//);
+  await expect(page.getByRole("heading", { name: "Hand Made" })).toBeVisible();
   await expect(page.locator(`img[src="${PHOTO}"]`)).toBeVisible();
 });
 
@@ -76,9 +77,8 @@ test("cover art can be attached to a release that arrived without any", async ({
   await page.fill('input[name="title"]', "Bare Sleeve");
   await page.fill('input[name="releaseDate"]', "2026-03-01");
   await page.getByRole("button", { name: "Log release" }).click();
-
-  await page.getByRole("link", { name: /Bare Sleeve/ }).click();
   await page.waitForURL(/\/releases\//);
+
   await page.getByText("Edit this release").click();
   await page.fill('input[name="coverUrl"]', PHOTO);
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -93,7 +93,6 @@ test("a whole tracklist can be pasted in at once", async ({ page }) => {
   await page.fill('input[name="title"]', "Typed In");
   await page.fill('input[name="releaseDate"]', "2026-03-01");
   await page.getByRole("button", { name: "Log release" }).click();
-  await page.getByRole("link", { name: /Typed In/ }).click();
   await page.waitForURL(/\/releases\//);
 
   await page.fill(
@@ -125,7 +124,7 @@ test("hand-entered songs count as heard everywhere, same as fetched ones", async
     await page.fill('input[name="title"]', title);
     await page.fill('input[name="releaseDate"]', "2026-03-01");
     await page.getByRole("button", { name: "Log release" }).click();
-    await expect(page.getByRole("link", { name: new RegExp(title) })).toBeVisible();
+    await page.waitForURL(/\/releases\//);
   }
 
   for (const title of ["Record One", "Record Two"]) {

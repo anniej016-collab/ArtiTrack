@@ -91,7 +91,7 @@ export async function addRelease(formData: FormData) {
 
   if (!artistId || !title || !releaseDateRaw) return;
 
-  await prisma.release.create({
+  const release = await prisma.release.create({
     data: {
       artistId,
       title,
@@ -104,6 +104,9 @@ export async function addRelease(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath(`/artists/${artistId}`);
+  // Straight to the release: nothing can fetch a hand-logged tracklist, so
+  // typing the songs in is the next step, and its page is where that happens.
+  redirect(`/releases/${release.id}`);
 }
 
 /**
