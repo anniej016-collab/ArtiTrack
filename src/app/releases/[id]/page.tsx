@@ -21,7 +21,7 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
   const release = await prisma.release.findUnique({
     where: { id },
     include: {
-      artist: { select: { id: true, name: true, source: true } },
+      artist: { select: { id: true, name: true, syncSource: true } },
       tracks: {
         orderBy: { position: "asc" },
         include: {
@@ -41,8 +41,9 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
   if (!release) notFound();
 
   const heard = release.tracks.filter((track) => track.song?.listened).length;
+  const syncSource = release.artist.syncSource;
   const canLoadTracks =
-    supportsTracks(release.artist.source) && release.externalId !== null;
+    syncSource !== null && supportsTracks(syncSource) && release.externalId !== null;
   // Only hand-entered rows are editable by hand; a fetched tracklist is the
   // provider's to replace.
   const manualTracks = release.tracks.filter((track) => track.externalId === null);
@@ -73,7 +74,11 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
           <p className="mt-1.5 text-sm text-muted">{release.artist.name}</p>
 
           <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-            <ReleaseTypeBadge type={release.type} title={release.title} />
+            <ReleaseTypeBadge
+            type={release.type}
+            title={release.title}
+            category={release.category}
+          />
             <span className="text-xs text-faint">
               {formatDate(release.releaseDate)}
             </span>
@@ -120,7 +125,9 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
                 ? "Song list hasn't been fetched yet."
                 : release.externalId === null
                   ? "This release was added by hand, so there's no song list to fetch."
-                  : `${providerLabel(release.artist.source)} doesn't publish song lists, so there's nothing to fetch.`}
+                  : syncSource === null
+                    ? "Nothing is watching this artist yet, so there's no song list to fetch."
+                    : `${providerLabel(syncSource)} doesn't publish song lists, so there's nothing to fetch.`}
             </p>
             {canLoadTracks && <LoadReleaseTracksButton releaseId={release.id} />}
           </div>

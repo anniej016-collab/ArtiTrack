@@ -28,6 +28,26 @@ export function ImportDiscography() {
         />
       </div>
 
+      <div>
+        <label
+          htmlFor="import-link"
+          className="mb-1.5 block text-xs font-medium text-muted"
+        >
+          Link to the discography site <span className="text-faint">(optional)</span>
+        </label>
+        <input
+          id="import-link"
+          name="discographyUrl"
+          type="url"
+          placeholder="https://…"
+          className="field w-full px-3 py-2 text-sm"
+        />
+        <p className="mt-1.5 text-xs text-faint">
+          Applied to every artist in the file at once, and shown on each of their
+          banners — so a group split across a dozen units only needs it entered here.
+        </p>
+      </div>
+
       <label
         className="flex w-fit cursor-pointer items-center gap-2 text-xs text-muted"
         title="Keeps a back catalogue out of the To listen queue"
@@ -36,7 +56,7 @@ export function ImportDiscography() {
           type="checkbox"
           name="markListened"
           defaultChecked
-          className="size-3.5 cursor-pointer accent-violet-300"
+          className="size-3.5 cursor-pointer accent-violet-500"
         />
         Mark everything as already heard
       </label>

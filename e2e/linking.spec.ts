@@ -14,7 +14,8 @@ test.beforeEach(async ({ page }, testInfo) => {
 const FILE = `<script>
 const DATA = [
 {d:"2026",ap:true,u:"Testhead",t:"In Testing",ty:"Studio Album",la:"English",m:["Ana"],n:"from the file",tl:[{"t":"Test Song One"},{"t":"Test Song Two"}]},
-{d:"2015-01-01",u:"Testhead",t:"Something Only The File Knows",ty:"OST",la:"English",m:["Ana"]},
+{d:"2019",ap:true,u:"Testhead",t:"Spectre Test",ty:"OST",la:"English",m:["Ana"]},
+{d:"2015-01-01",u:"Testhead",t:"Something Only The File Knows",ty:"Concert Film",la:"English",m:["Ana"]},
 ];
 </script>`;
 
@@ -22,7 +23,7 @@ async function importFile(page: import("@playwright/test").Page) {
   await page.goto("/import");
   await page.fill('textarea[name="source"]', FILE);
   await page.getByRole("button", { name: "Import" }).click();
-  await expect(page.getByText(/Imported 2 releases/)).toBeVisible();
+  await expect(page.getByText(/Imported 3 releases/)).toBeVisible();
 }
 
 async function openTesthead(page: import("@playwright/test").Page) {
@@ -136,4 +137,49 @@ test("an artist can carry a link to a fuller discography elsewhere", async ({ pa
   await expect(link).toHaveAttribute("href", "https://example.test/nct");
   // Opens away from the tracker rather than navigating out of it.
   await expect(link).toHaveAttribute("target", "_blank");
+});
+
+test("an OST the file classifies is still matched to the service", async ({ page }) => {
+  /*
+   * The file's own categories — OST, concert film — describe records that
+   * mostly do exist on a service too. They are classifications, not a claim
+   * that the record is unavailable, so nothing about them excludes a release
+   * from matching. Only being genuinely absent does.
+   */
+  await importFile(page);
+  await openTesthead(page);
+  await page.getByRole("button", { name: /Check for new releases automatically/ }).click();
+  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "This one" }).first().click();
+  await expect(page.getByText(/checked against Deezer/)).toBeVisible();
+
+  // Deezer lists "Spectre Test" as a single; the file calls it an OST. One row.
+  await expect(page.getByRole("link", { name: "Spectre Test" })).toHaveCount(1);
+
+  // And the file's classification is what's kept, not the service's.
+  await page.getByRole("link", { name: "Spectre Test" }).click();
+  await page.waitForURL(/\/releases\//);
+  await expect(page.getByRole("heading", { name: "Spectre Test" })).toBeVisible();
+  await expect(page.getByText("Soundtrack", { exact: true })).toBeVisible();
+
+  // Being matched means its songs can now be fetched, which an unmatched
+  // file-only row could never do.
+  await expect(page.getByRole("button", { name: /Load songs/ })).toBeVisible();
+});
+
+test("a matched OST's songs fold in with the rest of the artist's", async ({ page }) => {
+  await importFile(page);
+  await openTesthead(page);
+  await page.getByRole("button", { name: /Check for new releases automatically/ }).click();
+  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "This one" }).first().click();
+  await expect(page.getByText(/checked against Deezer/)).toBeVisible();
+
+  await page.getByRole("link", { name: "Spectre Test" }).click();
+  await page.waitForURL(/\/releases\//);
+  await page.getByRole("button", { name: /Load songs/ }).click();
+
+  // The song arrives under the same artist and counts like any other — heard,
+  // because the release it belongs to was imported as heard.
+  await expect(page.getByText(/1 of 1 songs heard/)).toBeVisible();
 });

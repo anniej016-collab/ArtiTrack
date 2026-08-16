@@ -5,27 +5,28 @@
  * covers read better against a dark ground, and every listening app the user
  * already knows works this way.
  *
- * Pastel lavender, kept deliberately soft.
+ * Electric violet, with the magenta taken out.
  *
- * The streaming services all use an electric violet running into magenta; this
- * stays well clear of that by being desaturated and pale rather than neon — a
- * lilac that sits quietly on the page instead of glowing off it. The ground is
- * a cool near-black with a little blue in it, which lavender needs to read as
- * pastel rather than muddy.
+ * The punch is the point: a pastel version of this read as washed out. What
+ * makes the streaming services look alike is not the violet itself but the
+ * violet-into-pink gradient they all run, so the violet stays and the second
+ * colour is a bright teal instead — the opposite side of the wheel rather than
+ * a neighbour of it. That pairing is also why the gradient is kept to thin
+ * decoration: teal is too light to carry white text.
  */
 :root {
-  --bg: #0b0a0f;
-  --panel: rgba(240, 238, 255, 0.042);
-  --panel-hover: rgba(240, 238, 255, 0.078);
-  --line: rgba(226, 222, 255, 0.1);
-  --text: #f2f1f7;
-  --muted: #a09cb4;
-  --faint: #6f6b84;
-  --accent: #c3b0f0;
-  --accent-2: #9fc4ee;
-  /* Dark ink for text on the accent: a pastel is far too pale to carry white. */
-  --on-accent: #191428;
-  --success: #7fd8a4;
+  --bg: #08070d;
+  --panel: rgba(233, 232, 255, 0.045);
+  --panel-hover: rgba(233, 232, 255, 0.085);
+  --line: rgba(214, 210, 255, 0.11);
+  --text: #f3f2f8;
+  --muted: #9d99b3;
+  --faint: #6b6782;
+  --accent: #7f56ff;
+  --accent-2: #16dfd0;
+  /* The violet is dark enough to carry white, unlike the pastel it replaces. */
+  --on-accent: #ffffff;
+  --success: #35d68f;
 }
 
 @theme inline {
@@ -52,10 +53,10 @@ body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-sans), system-ui, sans-serif;
-  /* Two pale washes up top, so the page isn't a flat slab of black. */
+  /* Two washes up top, so the page isn't a flat slab of black. */
   background-image:
-    radial-gradient(70rem 32rem at 18% -10%, rgba(195, 176, 240, 0.14), transparent 62%),
-    radial-gradient(46rem 24rem at 96% -16%, rgba(159, 196, 238, 0.1), transparent 62%);
+    radial-gradient(70rem 32rem at 16% -10%, rgba(127, 86, 255, 0.22), transparent 62%),
+    radial-gradient(44rem 24rem at 97% -16%, rgba(22, 223, 208, 0.09), transparent 62%);
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
@@ -110,15 +111,16 @@ body {
   }
 
   .btn-primary {
-    background-image: linear-gradient(135deg, var(--accent), var(--accent-2));
-    /* Dark ink, not white: the accent is far too pale to carry white text. */
+    /* Solid rather than a gradient: the teal end is too light for white text,
+       so the gradient stays where nothing has to be legible on top of it. */
+    background-color: var(--accent);
     color: var(--on-accent);
     font-weight: 650;
     border-radius: 0.625rem;
     transition: filter 150ms ease, opacity 150ms ease;
   }
   .btn-primary:hover:not(:disabled) {
-    filter: brightness(1.12);
+    filter: brightness(1.14);
   }
   .btn-primary:disabled {
     opacity: 0.55;
@@ -147,8 +149,8 @@ body {
   }
   .field:focus {
     outline: none;
-    border-color: rgba(195, 176, 240, 0.7);
-    box-shadow: 0 0 0 3px rgba(195, 176, 240, 0.18);
+    border-color: rgba(127, 86, 255, 0.75);
+    box-shadow: 0 0 0 3px rgba(127, 86, 255, 0.22);
   }
 
   /* The selected half of a segmented control, wherever one appears. */

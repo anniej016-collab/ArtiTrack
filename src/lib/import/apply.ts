@@ -27,7 +27,10 @@ export type ApplyResult = {
 
 export async function applyImport(
   releases: ImportedRelease[],
-  { markListened }: { markListened: boolean },
+  {
+    markListened,
+    discographyUrl,
+  }: { markListened: boolean; discographyUrl?: string | null },
 ): Promise<ApplyResult> {
   const names = [...new Set(releases.map((release) => release.artistName))];
 
@@ -40,9 +43,26 @@ export async function applyImport(
   await prisma.artist.createMany({
     data: names
       .filter((name) => !known.has(name))
-      .map((name) => ({ name, source: IMPORT_SOURCE, externalId: name })),
+      .map((name) => ({
+        name,
+        source: IMPORT_SOURCE,
+        externalId: name,
+        discographyUrl: discographyUrl ?? null,
+      })),
     skipDuplicates: true,
   });
+
+  /*
+   * One link, every artist in the file. A group whose releases are split across
+   * a dozen units would otherwise mean pasting the same address a dozen times,
+   * which is the sort of repetition the import exists to remove.
+   */
+  if (discographyUrl) {
+    await prisma.artist.updateMany({
+      where: { source: IMPORT_SOURCE, externalId: { in: names } },
+      data: { discographyUrl },
+    });
+  }
 
   const artists = await prisma.artist.findMany({
     where: { source: IMPORT_SOURCE, externalId: { in: names } },
@@ -146,6 +166,7 @@ export async function applyImport(
         importKey: release.externalId,
         title: release.title,
         type: release.type,
+        category: release.category,
         releaseDate: release.releaseDate,
         coverUrl: release.coverUrl,
         notes: release.notes,
@@ -167,6 +188,7 @@ export async function applyImport(
       data: {
         title: release.title,
         type: release.type,
+        category: release.category,
         releaseDate: release.releaseDate,
         // Only where the file has something to say. A release the file gives no
         // cover for may have picked one up from a service since, and silence in

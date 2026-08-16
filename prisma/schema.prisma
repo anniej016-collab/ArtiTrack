@@ -82,6 +82,11 @@ model Release {
   /// can be matched by either — the same record can come from both.
   importKey String?
 
+  /// What kind of record this is, where something knows better than the title
+  /// does. A file that says "OST" or "Concert Film" is stating a fact the four
+  /// stored types cannot hold and the title does not reveal.
+  category String?
+
   // Tracklists are fetched per release rather than during an artist sync: one
   // request per album would make importing a large discography very slow.
   tracks         Track[]

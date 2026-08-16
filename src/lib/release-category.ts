@@ -58,7 +58,13 @@ const TITLE_PATTERNS: [ReleaseCategory, RegExp][] = [
 export function releaseCategory(
   title: string,
   type: ReleaseType | string,
+  /** What a source stated outright, which beats anything read off the title. */
+  stated?: string | null,
 ): ReleaseCategory {
+  if (stated && (RELEASE_CATEGORIES as readonly string[]).includes(stated)) {
+    return stated as ReleaseCategory;
+  }
+
   const haystack = title.toLowerCase();
 
   for (const [category, pattern] of TITLE_PATTERNS) {
@@ -81,11 +87,11 @@ export function releaseCategory(
 
 /** Counts per category, for showing how much each filter chip would hide. */
 export function countByCategory(
-  releases: { title: string; type: ReleaseType | string }[],
+  releases: { title: string; type: ReleaseType | string; category?: string | null }[],
 ): Map<ReleaseCategory, number> {
   const counts = new Map<ReleaseCategory, number>();
   for (const release of releases) {
-    const category = releaseCategory(release.title, release.type);
+    const category = releaseCategory(release.title, release.type, release.category);
     counts.set(category, (counts.get(category) ?? 0) + 1);
   }
   return counts;

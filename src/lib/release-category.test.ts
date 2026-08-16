@@ -57,3 +57,18 @@ describe("countByCategory", () => {
     expect(counts.has("soundtrack")).toBe(false);
   });
 });
+
+describe("a stated category", () => {
+  it("beats anything read off the title", () => {
+    // A soundtrack with an ordinary name reads as a compilation otherwise,
+    // because nothing in the words gives it away.
+    expect(releaseCategory("Spectre Test", "OTHER")).toBe("compilation");
+    expect(releaseCategory("Spectre Test", "OTHER", "soundtrack")).toBe("soundtrack");
+    expect(releaseCategory("Some Show", "OTHER", "live")).toBe("live");
+  });
+
+  it("ignores a stated value that isn't one of the categories", () => {
+    expect(releaseCategory("Kid A", "ALBUM", "nonsense")).toBe("album");
+    expect(releaseCategory("Kid A", "ALBUM", null)).toBe("album");
+  });
+});

@@ -79,9 +79,13 @@ losing their history.
   title, same year — and adopts them, keeping their tracklists, notes and heard marks
   rather than listing everything twice.
 - **Link out to a fuller discography.** Each artist can carry a link to a detailed
-  catalogue kept elsewhere, shown as a button at the top of their page. For groups whose
-  releases are spread across units, side projects and soundtracks in ways no service
-  lays out well.
+  catalogue kept elsewhere, shown on their banner. An import can set the same link for
+  every artist in the file at once, so a group split across a dozen units needs it
+  entered only the once.
+- **A file that says what a release is keeps saying it.** "OST" and "Concert Film" are
+  classifications the four stored types can't hold and no title reveals, so they're
+  stored outright and shown as Soundtrack and Live. They are still ordinary releases:
+  nothing about being one excludes it from matching a service.
 - **The check-out list knows what's already in the tracker.** A playlist is unfiltered by
   definition, so each row says whether you already follow that artist (or have them
   paused), and flags anything whose song or record you have already ticked off — with a
@@ -99,8 +103,9 @@ date, so "Recently listened" shows genuine recent listens rather than an import.
 
 ## How it looks
 
-A pastel lavender, kept deliberately soft and desaturated so it reads as nothing
-like the electric violet-into-magenta the streaming services use. Section headings
+Electric violet, paired with a bright teal rather than the magenta every streaming
+service runs into. The punch is the point — a pastel version of the same idea read as
+washed out — so what changes is the second colour, not the saturation. Section headings
 carry the display face at full brightness with a short accent rule, because as quiet
 uppercase labels they were indistinguishable from the small print inside them. The
 header is a two-item nav, Library and Check out, with the current one filled in.

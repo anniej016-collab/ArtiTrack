@@ -69,7 +69,11 @@ function ReleaseRow({
           >
             {release.title}
           </Link>
-          <ReleaseTypeBadge type={release.type} title={release.title} />
+          <ReleaseTypeBadge
+            type={release.type}
+            title={release.title}
+            category={release.category}
+          />
         </div>
         <p className="mt-1 truncate text-xs text-faint">
           {showArtist && release.artist && (
@@ -262,7 +266,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const categoryCounts = countByCategory(queueCandidates);
   const toListen = queueCandidates.filter(
     (release) =>
-      !hiddenCategories.includes(releaseCategory(release.title, release.type)),
+      !hiddenCategories.includes(
+        releaseCategory(release.title, release.type, release.category),
+      ),
   );
 
   const queuePreview = sectionStates["to-listen"] === "preview";

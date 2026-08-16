@@ -8,6 +8,7 @@ export type ReleaseCardData = {
   id: string;
   title: string;
   type: string;
+  category: string | null;
   releaseDate: Date;
   coverUrl: string | null;
   listened: boolean;
@@ -92,7 +93,11 @@ export function ReleaseCard({
             compact ? "mt-1" : "mt-1.5 gap-x-2"
           }`}
         >
-          <ReleaseTypeBadge type={release.type} title={release.title} />
+          <ReleaseTypeBadge
+            type={release.type}
+            title={release.title}
+            category={release.category}
+          />
           <span className={compact ? "text-[0.7rem] text-faint" : "text-xs text-faint"}>
             {release.releaseDate.getUTCFullYear()}
           </span>

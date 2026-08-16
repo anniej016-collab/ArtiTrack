@@ -23,6 +23,8 @@ export type ImportedRelease = {
   type: ReleaseType;
   coverUrl: string | null;
   notes: string | null;
+  /** What the file says this is, where the tracker can show it. */
+  category: string | null;
   tracks: ImportedTrack[];
   /** Stable across re-imports, so an updated file corrects rather than duplicates. */
   externalId: string;
@@ -59,6 +61,21 @@ const TYPES: Record<string, ReleaseType> = {
   single: "SINGLE",
   "single album": "SINGLE",
   "promo single": "SINGLE",
+};
+
+/**
+ * The file's wording for kinds the four stored types cannot express.
+ *
+ * Only where it lands on a category the queue already offers — a soundtrack
+ * with an ordinary title would otherwise be read as a compilation, since
+ * nothing in "Spectre Test" says what it is.
+ */
+const CATEGORIES: Record<string, string> = {
+  ost: "soundtrack",
+  soundtrack: "soundtrack",
+  "concert film": "live",
+  "live album": "live",
+  repackage: "deluxe",
 };
 
 function str(value: unknown): string | null {
@@ -160,6 +177,7 @@ export function parseDiscography(source: string): ImportSummary {
       title,
       releaseDate,
       type: TYPES[kind?.toLowerCase() ?? ""] ?? "OTHER",
+      category: CATEGORIES[kind?.toLowerCase() ?? ""] ?? null,
       coverUrl: str(record.cv),
       // The file's own wording for the type is worth keeping — "OST" and
       // "Concert Film" say more than the four types the tracker stores.

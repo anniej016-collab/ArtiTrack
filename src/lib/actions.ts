@@ -622,6 +622,7 @@ export async function importDiscographyAction(
 
     const result = await applyImport(releases, {
       markListened: formData.get("markListened") !== null,
+      discographyUrl: imageField(formData, "discographyUrl"),
     });
 
     revalidatePath("/", "layout");

@@ -8,14 +8,14 @@ import { CATEGORY_LABELS, releaseCategory } from "@/lib/release-category";
  * now, so switching a chip off visibly hides the badges that match it.
  */
 const styles: Record<string, string> = {
-  album: "bg-violet-300/12 text-violet-200/90 ring-violet-300/20",
-  ep: "bg-teal-400/12 text-teal-200/90 ring-teal-300/20",
-  single: "bg-pink-300/12 text-pink-200/90 ring-pink-300/20",
-  deluxe: "bg-fuchsia-300/12 text-fuchsia-200/90 ring-fuchsia-300/20",
-  remaster: "bg-fuchsia-300/12 text-fuchsia-200/90 ring-fuchsia-300/20",
-  compilation: "bg-slate-400/12 text-slate-300 ring-slate-300/20",
-  soundtrack: "bg-lime-400/12 text-lime-200/90 ring-lime-300/20",
-  live: "bg-sky-400/12 text-sky-200/90 ring-sky-300/20",
+  album: "bg-violet-500/18 text-violet-200 ring-violet-400/30",
+  ep: "bg-teal-400/15 text-teal-200 ring-teal-300/25",
+  single: "bg-sky-400/15 text-sky-200 ring-sky-300/25",
+  deluxe: "bg-indigo-400/15 text-indigo-200 ring-indigo-300/25",
+  remaster: "bg-indigo-400/15 text-indigo-200 ring-indigo-300/25",
+  compilation: "bg-slate-400/15 text-slate-300 ring-slate-300/25",
+  soundtrack: "bg-lime-400/15 text-lime-200 ring-lime-300/25",
+  live: "bg-rose-400/15 text-rose-200 ring-rose-300/25",
 };
 
 /** Plural reads oddly on a single item: "Albums" on one record. */
@@ -30,10 +30,19 @@ const SINGULAR: Record<string, string> = {
   live: "Live",
 };
 
-export function ReleaseTypeBadge({ type, title }: { type: string; title?: string }) {
+export function ReleaseTypeBadge({
+  type,
+  title,
+  category: stated,
+}: {
+  type: string;
+  title?: string;
+  /** What a source said outright, which beats reading the title. */
+  category?: string | null;
+}) {
   // Without a title only the provider's type is available, which is the most
   // the badge can honestly say.
-  const category = releaseCategory(title ?? "", type);
+  const category = releaseCategory(title ?? "", type, stated);
 
   return (
     <span

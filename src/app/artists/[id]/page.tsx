@@ -142,24 +142,26 @@ export default async function ArtistPage({
                   </>
                 )}
               </p>
+
+              {/* On the banner, under the name: for a catalogue spread across
+                  units and side projects, the fuller reference is the thing you
+                  came to reach. */}
+              {artist.discographyUrl && (
+                <a
+                  href={artist.discographyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1.5 text-xs font-semibold text-accent ring-1 ring-inset ring-accent/30 transition hover:bg-accent/25"
+                  title="Open the full discography in a new tab"
+                >
+                  Full discography
+                  <span aria-hidden="true" className="text-[0.7rem]">↗</span>
+                </a>
+              )}
             </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {/* A fuller reference kept outside the tracker, for a catalogue no
-                service lays out well. */}
-            {artist.discographyUrl && (
-              <a
-                href={artist.discographyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
-                title="Open the full discography in a new tab"
-              >
-                Full discography
-                <span aria-hidden="true" className="text-[0.7rem]">↗</span>
-              </a>
-            )}
             {isSyncable && !isPaused && <SyncArtistButton artistId={artist.id} />}
             <StatusToggleButton artistId={artist.id} status={artist.status} />
           </div>
