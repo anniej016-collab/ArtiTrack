@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Space_Grotesk } from "next/font/google";
 import Link from "next/link";
 import { VinylIcon } from "@/components/icons";
@@ -19,6 +19,14 @@ const display = Space_Grotesk({
 export const metadata: Metadata = {
   title: "ArtiTrack",
   description: "Track the artists you follow, their releases, and what you've heard.",
+  // Lets iOS open it full-screen from the home screen.
+  appleWebApp: { capable: true, title: "ArtiTrack", statusBarStyle: "black-translucent" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#09090f",
+  // The app is dark-only, so tell the browser before any CSS loads.
+  colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -42,9 +50,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-4xl flex-1 px-5 pb-20 pt-8">
+        <main className="mx-auto w-full max-w-4xl flex-1 px-5 pb-12 pt-8">
           {children}
         </main>
+        <footer className="mx-auto w-full max-w-4xl px-5 pb-10">
+          <a
+            href="/api/export"
+            download
+            className="text-xs text-faint transition-colors hover:text-muted"
+          >
+            Download my data
+          </a>
+        </footer>
       </body>
     </html>
   );

@@ -37,6 +37,10 @@ losing their history.
   of "Following", and their releases leave the To listen queue — but their full release
   history, including what you'd already marked as listened, stays on their page.
 - **Resume** a paused artist any time.
+- **Download your data** as JSON from the link at the bottom of any page. What you've
+  heard is hand-entered and can't be re-fetched from anywhere, so it's worth keeping a
+  copy.
+- **Install it to a home screen** — it opens without browser chrome, like an app.
 
 When you add an artist, **"Heard already" is ticked by default** so their existing
 catalogue does not flood the To listen queue. Releases found by later syncs arrive
