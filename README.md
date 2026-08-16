@@ -20,7 +20,11 @@ losing their history.
   **Songs** tab lists every track across their releases with a heard count. Tracklists
   are fetched per release, in batches, because each one costs a separate request.
 - **Switch between cards and a list** — each home section keeps its own choice, so the
-  queue can be a list while your artists stay as cards. Card view shows album art for
+  queue can be a list while your artists stay as cards.
+- **Every section previews two rows**, with "Show all" to expand and a chevron to
+  collapse it entirely. Both stick between visits, so the home page stays a fixed length
+  however large the library grows. Sections lead with the most recent: newest releases,
+  most recently added artists, most recently paused. Card view shows album art for
   releases and photos for artists; list view is text-only. The choice is stored in a
   cookie, so the server renders the right layout straight away and it survives closing
   the tab.

@@ -11,38 +11,29 @@ import { ArtistCard, type ArtistCardData } from "@/components/ArtistCard";
 import { ViewToggle } from "@/components/ViewToggle";
 import { GroupToggle } from "@/components/GroupToggle";
 import { SectionNav } from "@/components/SectionNav";
+import {
+  CollapsibleSection,
+  LIST_PREVIEW,
+  PREVIEW_MIN,
+} from "@/components/CollapsibleSection";
 import { VinylIcon } from "@/components/icons";
-import { getGroupMode, getViewModes, type ViewMode } from "@/lib/view-mode";
+import {
+  getGroupMode,
+  getSectionStates,
+  getViewModes,
+  type SectionKey,
+  type ViewMode,
+} from "@/lib/view-mode";
 import { groupReleases } from "@/lib/grouping";
 import { formatDate } from "@/lib/format";
 
 /** Grouping only helps if the queue isn't silently truncated first. */
 const TO_LISTEN_LIMIT = 200;
+/** Groups shown before "Show all", when the queue is grouped and previewed. */
+const PREVIEW_GROUPS = 2;
 
 // Always read live data, and keep the database out of the build step.
 export const dynamic = "force-dynamic";
-
-function SectionHeading({
-  title,
-  count,
-  children,
-}: {
-  title: string;
-  count?: number;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-      <h2 className="eyebrow">
-        {title}
-        {count !== undefined && count > 0 && (
-          <span className="ml-1.5 text-faint/70">· {count}</span>
-        )}
-      </h2>
-      <div className="flex items-center gap-2">{children}</div>
-    </div>
-  );
-}
 
 function EmptyState({ message }: { message: string }) {
   return (
@@ -100,15 +91,19 @@ function ReleaseGroup({
   releases,
   mode,
   showArtist = true,
+  clamp = false,
 }: {
   releases: ReleaseCardData[];
   mode: ViewMode;
   showArtist?: boolean;
+  /** Preview: two rows in card view, a short slice in list view. */
+  clamp?: boolean;
 }) {
   if (mode === "list") {
+    const shown = clamp ? releases.slice(0, LIST_PREVIEW) : releases;
     return (
       <ul className="panel divide-y divide-line overflow-hidden">
-        {releases.map((release) => (
+        {shown.map((release) => (
           <ReleaseRow key={release.id} release={release} showArtist={showArtist} />
         ))}
       </ul>
@@ -118,7 +113,11 @@ function ReleaseGroup({
   // Denser than the artist page: here the grid shares the screen with three
   // other sections, so tiles stay small enough to leave room for them.
   return (
-    <ul className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+    <ul
+      className={`grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 ${
+        clamp ? "clamp-rows" : ""
+      }`}
+    >
       {releases.map((release) => (
         <ReleaseCard
           key={release.id}
@@ -135,15 +134,18 @@ function ArtistGroup({
   artists,
   mode,
   status,
+  clamp = false,
 }: {
   artists: ArtistCardData[];
   mode: ViewMode;
   status: "ACTIVE" | "PAUSED";
+  clamp?: boolean;
 }) {
   if (mode === "list") {
+    const shown = clamp ? artists.slice(0, LIST_PREVIEW) : artists;
     return (
       <ul className="panel divide-y divide-line overflow-hidden">
-        {artists.map((artist) => (
+        {shown.map((artist) => (
           // `relative` anchors the stretched link, so the whole row is tappable
           // instead of just the name.
           <li
@@ -166,7 +168,11 @@ function ArtistGroup({
   }
 
   return (
-    <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+    <ul
+      className={`grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 ${
+        clamp ? "clamp-rows" : ""
+      }`}
+    >
       {artists.map((artist) => (
         <ArtistCard key={artist.id} artist={artist} />
       ))}
@@ -187,6 +193,7 @@ export default async function Home() {
 
   const [
     viewModes,
+    sectionStates,
     groupMode,
     activeArtists,
     pausedArtists,
@@ -196,15 +203,19 @@ export default async function Home() {
     heardCount,
   ] = await Promise.all([
       getViewModes(),
+      getSectionStates(),
       getGroupMode(),
+      // Most recently added first, so a preview shows what you just followed
+      // rather than whoever happens to start with "A".
       prisma.artist.findMany({
         where: { status: "ACTIVE" },
-        orderBy: { name: "asc" },
+        orderBy: { createdAt: "desc" },
         select: artistSelect,
       }),
+      // Most recently paused first, for the same reason.
       prisma.artist.findMany({
         where: { status: "PAUSED" },
-        orderBy: { name: "asc" },
+        orderBy: [{ pausedAt: "desc" }, { createdAt: "desc" }],
         select: artistSelect,
       }),
       prisma.release.findMany({
@@ -226,6 +237,16 @@ export default async function Home() {
       }),
       prisma.release.count({ where: { listened: true } }),
     ]);
+
+  const queuePreview = sectionStates["to-listen"] === "preview";
+
+  /**
+   * A preview only hides something when the list is longer than the shortest
+   * two-row capacity, so the control isn't offered when it would do nothing.
+   */
+  const canShowAll = (section: SectionKey, total: number) =>
+    sectionStates[section] === "preview" &&
+    total > (viewModes[section] === "list" ? LIST_PREVIEW : PREVIEW_MIN);
 
   const syncableCount = activeArtists.filter(
     (artist) => artist.source !== "manual" && artist.externalId,
@@ -313,12 +334,20 @@ export default async function Home() {
         </>
       )}
 
-      <section id="to-listen" className="scroll-mt-28">
-        <SectionHeading title="To listen" count={toListenTotal}>
-          {syncableCount > 0 && <SyncAllButton />}
-          <ViewToggle section="to-listen" current={viewModes["to-listen"]} />
-        </SectionHeading>
-
+      <CollapsibleSection
+        section="to-listen"
+        id="to-listen"
+        title="To listen"
+        count={toListenTotal}
+        state={sectionStates["to-listen"]}
+        canShowAll={canShowAll("to-listen", toListen.length)}
+        controls={
+          <>
+            {syncableCount > 0 && <SyncAllButton />}
+            <ViewToggle section="to-listen" current={viewModes["to-listen"]} />
+          </>
+        }
+      >
         {toListen.length === 0 ? (
           <EmptyState
             message={
@@ -336,10 +365,18 @@ export default async function Home() {
             )}
 
             {groupMode === "none" ? (
-              <ReleaseGroup releases={toListen} mode={viewModes["to-listen"]} />
+              <ReleaseGroup
+                releases={toListen}
+                mode={viewModes["to-listen"]}
+                clamp={queuePreview}
+              />
             ) : (
               <div className="flex flex-col gap-5">
-                {groupReleases(toListen, groupMode).map((group) => (
+                {/* In preview only the first couple of groups show, each itself
+                    clamped, so grouping can't reintroduce an endless section. */}
+                {groupReleases(toListen, groupMode)
+                  .slice(0, queuePreview ? PREVIEW_GROUPS : undefined)
+                  .map((group) => (
                   // Open by default, but foldable: a long queue shouldn't push
                   // the rest of the page out of reach.
                   <details key={group.key} open className="group/fold">
@@ -368,6 +405,7 @@ export default async function Home() {
                       releases={group.items}
                       mode={viewModes["to-listen"]}
                       showArtist={groupMode !== "artist"}
+                      clamp={queuePreview}
                     />
                   </details>
                 ))}
@@ -381,41 +419,74 @@ export default async function Home() {
             )}
           </>
         )}
-      </section>
+      </CollapsibleSection>
 
       {recentlyListened.length > 0 && (
-        <section id="recently-listened" className="scroll-mt-28">
-          <SectionHeading title="Recently listened">
+        <CollapsibleSection
+          section="recently-listened"
+          id="recently-listened"
+          title="Recently listened"
+          count={recentlyListened.length}
+          state={sectionStates["recently-listened"]}
+          canShowAll={canShowAll("recently-listened", recentlyListened.length)}
+          controls={
             <ViewToggle
               section="recently-listened"
               current={viewModes["recently-listened"]}
             />
-          </SectionHeading>
-          <ReleaseGroup releases={recentlyListened} mode={viewModes["recently-listened"]} />
-        </section>
+          }
+        >
+          <ReleaseGroup
+            releases={recentlyListened}
+            mode={viewModes["recently-listened"]}
+            clamp={sectionStates["recently-listened"] === "preview"}
+          />
+        </CollapsibleSection>
       )}
 
       {activeArtists.length > 0 && (
-        <section id="following" className="scroll-mt-28">
-          <SectionHeading title="Following" count={activeArtists.length}>
-            <ViewToggle section="following" current={viewModes.following} />
-          </SectionHeading>
-          <ArtistGroup artists={activeArtists} mode={viewModes.following} status="ACTIVE" />
-        </section>
+        <CollapsibleSection
+          section="following"
+          id="following"
+          title="Following"
+          count={activeArtists.length}
+          state={sectionStates.following}
+          canShowAll={canShowAll("following", activeArtists.length)}
+          controls={<ViewToggle section="following" current={viewModes.following} />}
+        >
+          <ArtistGroup
+            artists={activeArtists}
+            mode={viewModes.following}
+            status="ACTIVE"
+            clamp={sectionStates.following === "preview"}
+          />
+        </CollapsibleSection>
       )}
 
       {pausedArtists.length > 0 && (
-        <section id="paused" className="scroll-mt-28">
-          <SectionHeading title="Paused" count={pausedArtists.length}>
-            <ViewToggle section="paused" current={viewModes.paused} />
-          </SectionHeading>
-          <p className="-mt-1 mb-3 text-xs text-faint">
-            No new releases from these artists. Their history is untouched.
-          </p>
+        <CollapsibleSection
+          section="paused"
+          id="paused"
+          title="Paused"
+          count={pausedArtists.length}
+          state={sectionStates.paused}
+          canShowAll={canShowAll("paused", pausedArtists.length)}
+          controls={<ViewToggle section="paused" current={viewModes.paused} />}
+          note={
+            <p className="-mt-1 mb-3 text-xs text-faint">
+              No new releases from these artists. Their history is untouched.
+            </p>
+          }
+        >
           <div className="opacity-65 transition-opacity hover:opacity-100">
-            <ArtistGroup artists={pausedArtists} mode={viewModes.paused} status="PAUSED" />
+            <ArtistGroup
+              artists={pausedArtists}
+              mode={viewModes.paused}
+              status="PAUSED"
+              clamp={sectionStates.paused === "preview"}
+            />
           </div>
-        </section>
+        </CollapsibleSection>
       )}
     </div>
   );

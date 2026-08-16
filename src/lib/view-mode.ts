@@ -13,10 +13,22 @@ export const SECTION_KEYS = [
 export type SectionKey = (typeof SECTION_KEYS)[number];
 export type ViewModes = Record<SectionKey, ViewMode>;
 
+/**
+ * How much of a section is on screen.
+ *
+ * "preview" is the default because every section grows without bound as the
+ * library does: two rows is enough to see what's new without the first section
+ * burying the rest.
+ */
+export type SectionState = "collapsed" | "preview" | "expanded";
+export type SectionStates = Record<SectionKey, SectionState>;
+
 export const VIEW_MODE_COOKIE = "artitrack_views";
 export const GROUP_MODE_COOKIE = "artitrack_group";
+export const SECTION_STATE_COOKIE = "artitrack_sections";
 
 const DEFAULT_VIEW: ViewMode = "cards";
+const DEFAULT_SECTION_STATE: SectionState = "preview";
 
 function isSectionKey(value: string): value is SectionKey {
   return (SECTION_KEYS as readonly string[]).includes(value);
@@ -49,6 +61,34 @@ export function serialiseViewModes(modes: ViewModes): string {
 export async function getViewModes(): Promise<ViewModes> {
   const store = await cookies();
   return parseViewModes(store.get(VIEW_MODE_COOKIE)?.value);
+}
+
+export function parseSectionStates(raw: string | undefined): SectionStates {
+  const states = Object.fromEntries(
+    SECTION_KEYS.map((key) => [key, DEFAULT_SECTION_STATE]),
+  ) as SectionStates;
+
+  for (const pair of (raw ?? "").split(",")) {
+    const [section, state] = pair.split(":");
+    if (
+      section &&
+      isSectionKey(section) &&
+      (state === "collapsed" || state === "preview" || state === "expanded")
+    ) {
+      states[section] = state;
+    }
+  }
+
+  return states;
+}
+
+export function serialiseSectionStates(states: SectionStates): string {
+  return SECTION_KEYS.map((key) => `${key}:${states[key]}`).join(",");
+}
+
+export async function getSectionStates(): Promise<SectionStates> {
+  const store = await cookies();
+  return parseSectionStates(store.get(SECTION_STATE_COOKIE)?.value);
 }
 
 export async function getGroupMode(): Promise<GroupMode> {

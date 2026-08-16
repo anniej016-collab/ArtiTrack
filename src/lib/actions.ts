@@ -5,10 +5,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   GROUP_MODE_COOKIE,
+  SECTION_STATE_COOKIE,
   VIEW_MODE_COOKIE,
+  parseSectionStates,
   parseViewModes,
+  serialiseSectionStates,
   serialiseViewModes,
   type SectionKey,
+  type SectionState,
   type ViewMode,
 } from "@/lib/view-mode";
 import type { GroupMode } from "@/lib/grouping";
@@ -187,6 +191,18 @@ export async function setSectionViewMode(section: SectionKey, mode: ViewMode) {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
   });
+  revalidatePath("/");
+}
+
+export async function setSectionState(section: SectionKey, state: SectionState) {
+  const store = await cookies();
+  const current = parseSectionStates(store.get(SECTION_STATE_COOKIE)?.value);
+
+  store.set(
+    SECTION_STATE_COOKIE,
+    serialiseSectionStates({ ...current, [section]: state }),
+    { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" },
+  );
   revalidatePath("/");
 }
 

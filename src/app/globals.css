@@ -115,6 +115,45 @@ body {
 }
 
 /*
+ * Clamps a card grid to exactly two rows.
+ *
+ * The column count changes at each breakpoint, so the cut-off has to move with
+ * it — a single fixed item limit would show one row on wide screens and four on
+ * a phone. These thresholds track the grid classes used for both the release and
+ * artist grids: 3 columns, then 4 / 5 / 6 at sm / md / lg.
+ */
+.clamp-rows > *:nth-child(n + 7) {
+  display: none;
+}
+
+@media (min-width: 40rem) {
+  .clamp-rows > *:nth-child(n + 7) {
+    display: flex;
+  }
+  .clamp-rows > *:nth-child(n + 9) {
+    display: none;
+  }
+}
+
+@media (min-width: 48rem) {
+  .clamp-rows > *:nth-child(n + 9) {
+    display: flex;
+  }
+  .clamp-rows > *:nth-child(n + 11) {
+    display: none;
+  }
+}
+
+@media (min-width: 64rem) {
+  .clamp-rows > *:nth-child(n + 11) {
+    display: flex;
+  }
+  .clamp-rows > *:nth-child(n + 13) {
+    display: none;
+  }
+}
+
+/*
  * Cover-art buttons stay visible on touch screens, where there is no hover to
  * reveal them, and fade in on hover only where hovering is actually possible.
  */
