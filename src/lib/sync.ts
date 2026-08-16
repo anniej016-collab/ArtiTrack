@@ -117,9 +117,24 @@ export type SyncAllResult = {
   failed: number;
 };
 
-export async function syncAllActive(): Promise<SyncAllResult> {
+/**
+ * How many artists one run will check.
+ *
+ * Each artist is a separate request, so an unbounded sweep of a large follow
+ * list would outlast a serverless request. Runs take the least-recently-checked
+ * first, so successive runs work through everyone rather than repeating the
+ * same few.
+ */
+export const SYNC_BATCH_SIZE = 25;
+
+export async function syncAllActive(
+  limit: number = SYNC_BATCH_SIZE,
+): Promise<SyncAllResult> {
   const artists = await prisma.artist.findMany({
     where: { status: "ACTIVE", source: PROVIDER_KEY, externalId: { not: null } },
+    // Nulls first: an artist never checked is the most overdue there is.
+    orderBy: { lastSyncedAt: { sort: "asc", nulls: "first" } },
+    take: limit,
     select: { id: true },
   });
 
@@ -141,6 +156,13 @@ export async function syncAllActive(): Promise<SyncAllResult> {
   });
 
   return { added, artistsSynced, failed };
+}
+
+/** Active, provider-backed artists still waiting to be checked. */
+export async function countSyncableArtists(): Promise<number> {
+  return prisma.artist.count({
+    where: { status: "ACTIVE", source: PROVIDER_KEY, externalId: { not: null } },
+  });
 }
 
 /**

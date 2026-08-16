@@ -7,8 +7,8 @@ losing their history.
 - **Search for an artist** on the home page and add them. Their back catalogue is
   imported automatically from [Deezer](https://www.deezer.com) — no API key or account
   needed. Artists can still be added and their releases logged by hand.
-- **Check for new releases** with a button on the home page (all followed artists) or on
-  a single artist's page. Re-syncing updates existing releases rather than duplicating
+- **New releases arrive on their own.** A scheduled job checks nightly, so the queue is
+  up to date whenever you open the app. There are still buttons to check on demand. Re-syncing updates existing releases rather than duplicating
   them, and never overwrites what you've marked as listened.
 - **Mark releases as listened.** Anything unlistened from an artist you follow sits in
   the **To listen** queue on the home page. Marking it clears it from the queue; you can
@@ -65,6 +65,16 @@ If a build fails with *"Connection url is empty"* or *"No Postgres connection st
 available"*, the database is not reaching that build. The build log lists the names of
 the database-related variables it can see, which distinguishes "nothing attached" from
 "attached but scoped to a different environment".
+
+## Scheduled syncing
+
+`vercel.json` runs `/api/cron/sync` once a day. Set **`CRON_SECRET`** in the project's
+Environment Variables — Vercel sends it as a bearer token, and the route refuses to run
+without it rather than leaving an endpoint anyone could trigger.
+
+Each run checks the least-recently-checked artists first, capped per run, so a large
+follow list is worked through over successive nights instead of timing out in one go.
+Paused artists are never checked.
 
 ## Keeping it private
 

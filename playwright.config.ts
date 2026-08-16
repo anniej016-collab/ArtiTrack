@@ -5,6 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3999;
 const MOCK_PORT = 4199;
+export const TEST_CRON_SECRET = "test-cron-secret";
 
 /**
  * Runs the real app against a stand-in provider, so the tests are deterministic
@@ -88,6 +89,7 @@ export default defineConfig({
         // directory, so the gate can't have an instance of its own here; its
         // rules are covered by unit tests in src/lib/auth.test.ts instead.
         ARTITRACK_PASSWORD: "",
+        CRON_SECRET: TEST_CRON_SECRET,
       },
       url: `http://127.0.0.1:${PORT}`,
       reuseExistingServer: !process.env.CI,
