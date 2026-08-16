@@ -42,6 +42,8 @@ import {
 } from "@/lib/listening";
 import { parseTracklist } from "@/lib/tracklist";
 import { parseDiscoveryLines } from "@/lib/discovery";
+import { matchDiscovery } from "@/lib/discovery-match";
+import { loadLibraryIndex } from "@/lib/library-index";
 import { songKey } from "@/lib/song-identity";
 import type { ReleaseCategory } from "@/lib/release-category";
 
@@ -500,6 +502,32 @@ export async function deleteDiscovery(id: string) {
 /** Clears out everything already heard, which is the point of ticking it off. */
 export async function clearHeardDiscoveries() {
   await prisma.discovery.deleteMany({ where: { heard: true } });
+  revalidatePath("/check-out");
+}
+
+/**
+ * Drops the leads the tracker says you have already heard.
+ *
+ * Offered as a deliberate press rather than done during a paste: the match is
+ * by name, which is sound enough to point at something but not to delete it
+ * behind your back.
+ */
+export async function clearAlreadyHeardDiscoveries() {
+  const [items, index] = await Promise.all([
+    prisma.discovery.findMany({
+      where: { heard: false },
+      select: { id: true, artistName: true, title: true },
+    }),
+    loadLibraryIndex(),
+  ]);
+
+  const stale = items.filter((item) => matchDiscovery(item, index).heard);
+  if (stale.length > 0) {
+    await prisma.discovery.deleteMany({
+      where: { id: { in: stale.map((item) => item.id) } },
+    });
+  }
+
   revalidatePath("/check-out");
 }
 

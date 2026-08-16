@@ -65,6 +65,11 @@ losing their history.
   paste a playlist in as `Artist - Title` lines — repeats are skipped, so an updated list
   can go straight over the old one. **Follow** on any row hands the name to the tracker's
   own search.
+- **The check-out list knows what's already in the tracker.** A playlist is unfiltered by
+  definition, so each row says whether you already follow that artist (or have them
+  paused), and flags anything whose song or record you have already ticked off — with a
+  button to clear those in one go. Nothing is dropped automatically: matching is by name,
+  which is sound enough to point at something but not to delete it behind your back.
 
 When you add an artist, **"Heard already" is ticked by default** so their existing
 catalogue does not flood the To listen queue. Releases found by later syncs arrive

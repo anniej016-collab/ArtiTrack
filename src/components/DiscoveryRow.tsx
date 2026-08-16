@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { deleteDiscovery, setDiscoveryHeard } from "@/lib/actions";
+import { NO_MATCH, type DiscoveryMatch } from "@/lib/discovery-match";
 import { CheckIcon, PlusIcon } from "@/components/icons";
 
 export type DiscoveryRowData = {
@@ -10,7 +11,14 @@ export type DiscoveryRowData = {
   heard: boolean;
 };
 
-export function DiscoveryRow({ item }: { item: DiscoveryRowData }) {
+export function DiscoveryRow({
+  item,
+  match = NO_MATCH,
+}: {
+  item: DiscoveryRowData;
+  /** What the tracker already knows about this artist or record. */
+  match?: DiscoveryMatch;
+}) {
   const label = item.title ?? item.artistName;
   const name = item.heard ? `${label}, heard` : `Mark ${label} heard`;
 
@@ -37,11 +45,28 @@ export function DiscoveryRow({ item }: { item: DiscoveryRowData }) {
       </form>
 
       <div className="min-w-0 flex-1">
-        <p className={`truncate text-sm ${item.heard ? "text-muted line-through" : ""}`}>
-          {item.title ?? item.artistName}
-        </p>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <p className={`truncate text-sm ${item.heard ? "text-muted line-through" : ""}`}>
+            {item.title ?? item.artistName}
+          </p>
+          {/* A playlist arrives unfiltered, so say plainly what is already
+              accounted for rather than letting it read as new. */}
+          {match.heard && !item.heard && (
+            <span className="shrink-0 rounded-full bg-success/15 px-1.5 py-0.5 text-[0.65rem] font-medium text-success ring-1 ring-inset ring-success/25">
+              Already heard
+            </span>
+          )}
+        </div>
         <p className="truncate text-xs text-faint">
           {item.title ? item.artistName : "Artist"}
+          {match.artistId && (
+            <>
+              <span className="mx-1.5 opacity-40">•</span>
+              <span className={match.paused ? "text-amber-300/80" : "text-accent/80"}>
+                {match.paused ? "paused in your library" : "you follow them"}
+              </span>
+            </>
+          )}
           {item.note && (
             <>
               <span className="mx-1.5 opacity-40">•</span>
@@ -51,15 +76,26 @@ export function DiscoveryRow({ item }: { item: DiscoveryRowData }) {
         </p>
       </div>
 
-      {/* Straight into the tracker's own search, with the name filled in — the
-          point of the list is that some of these turn into artists you follow. */}
-      <Link
-        href={`/?q=${encodeURIComponent(item.artistName)}`}
-        className="btn-ghost shrink-0 px-2.5 py-1 text-xs font-medium"
-        title={`Look up ${item.artistName} to follow them`}
-      >
-        Follow
-      </Link>
+      {/* Already in the library: straight to their page. Otherwise into the
+          tracker's own search with the name filled in, since the point of the
+          list is that some of these turn into artists you follow. */}
+      {match.artistId ? (
+        <Link
+          href={`/artists/${match.artistId}`}
+          className="btn-ghost shrink-0 px-2.5 py-1 text-xs font-medium"
+          title={`Open ${item.artistName}`}
+        >
+          Open
+        </Link>
+      ) : (
+        <Link
+          href={`/?q=${encodeURIComponent(item.artistName)}`}
+          className="btn-ghost shrink-0 px-2.5 py-1 text-xs font-medium"
+          title={`Look up ${item.artistName} to follow them`}
+        >
+          Follow
+        </Link>
+      )}
 
       <form action={deleteDiscovery.bind(null, item.id)}>
         <button

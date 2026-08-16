@@ -4,18 +4,28 @@ import { AddDiscoveryForm, PasteDiscoveriesForm } from "@/components/DiscoveryFo
 import { DiscoveryRow } from "@/components/DiscoveryRow";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { VinylIcon } from "@/components/icons";
-import { clearHeardDiscoveries } from "@/lib/actions";
+import { clearAlreadyHeardDiscoveries, clearHeardDiscoveries } from "@/lib/actions";
+import { matchDiscovery } from "@/lib/discovery-match";
+import { loadLibraryIndex } from "@/lib/library-index";
 
 export const dynamic = "force-dynamic";
 
 export default async function CheckOutPage() {
-  const items = await prisma.discovery.findMany({
-    // Unheard first, then newest, so the list reads as a queue of work.
-    orderBy: [{ heard: "asc" }, { createdAt: "desc" }],
-  });
+  const [items, index] = await Promise.all([
+    prisma.discovery.findMany({
+      // Unheard first, then newest, so the list reads as a queue of work.
+      orderBy: [{ heard: "asc" }, { createdAt: "desc" }],
+    }),
+    loadLibraryIndex(),
+  ]);
+
+  // A pasted playlist doesn't know what's already in the tracker, so each row
+  // is checked against it and says what it finds.
+  const matches = new Map(items.map((item) => [item.id, matchDiscovery(item, index)]));
 
   const waiting = items.filter((item) => !item.heard);
   const heard = items.filter((item) => item.heard);
+  const alreadyHeard = waiting.filter((item) => matches.get(item.id)?.heard);
 
   return (
     <div className="flex flex-col gap-8">
@@ -61,10 +71,28 @@ export default async function CheckOutPage() {
           <div className="flex flex-col gap-6">
             {waiting.length > 0 && (
               <div>
-                <h2 className="eyebrow mb-3">To hear · {waiting.length}</h2>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="eyebrow">To hear · {waiting.length}</h2>
+                  {/* Offered rather than done automatically: the match is by
+                      name, good enough to point at but not to delete on. */}
+                  {alreadyHeard.length > 0 && (
+                    <form action={clearAlreadyHeardDiscoveries}>
+                      <ConfirmSubmitButton
+                        message={`Remove ${alreadyHeard.length} the tracker says you've already heard?`}
+                        className="text-xs font-medium text-faint transition-colors hover:text-text"
+                      >
+                        Remove {alreadyHeard.length} already heard
+                      </ConfirmSubmitButton>
+                    </form>
+                  )}
+                </div>
                 <ul className="panel divide-y divide-line overflow-hidden">
                   {waiting.map((item) => (
-                    <DiscoveryRow key={item.id} item={item} />
+                    <DiscoveryRow
+                      key={item.id}
+                      item={item}
+                      match={matches.get(item.id)}
+                    />
                   ))}
                 </ul>
               </div>
@@ -85,7 +113,11 @@ export default async function CheckOutPage() {
                 </div>
                 <ul className="panel divide-y divide-line overflow-hidden">
                   {heard.map((item) => (
-                    <DiscoveryRow key={item.id} item={item} />
+                    <DiscoveryRow
+                      key={item.id}
+                      item={item}
+                      match={matches.get(item.id)}
+                    />
                   ))}
                 </ul>
               </div>

@@ -40,13 +40,27 @@ async function releasesCarrying(songIds: string[]): Promise<string[]> {
 }
 
 /**
+ * Which way a change is allowed to push the releases it touches.
+ *
+ * Every operation moves songs in one direction only, so the releases carrying
+ * them can only move that way too. Enforcing it matters: a tracklist arriving
+ * for one release must never un-hear another whose own songs simply haven't
+ * been fetched yet. Batches are fetched in parallel, so without this the
+ * outcome depended on which request happened to land first.
+ */
+type Direction = "up" | "down";
+
+/**
  * Re-derives each release's heard flag from the songs on it.
  *
  * A release with no tracks is left alone: "every song is heard" is vacuously
  * true of an empty tracklist, and applying that would mark a whole unfetched
  * back catalogue as heard.
  */
-async function deriveReleasesFromSongs(releaseIds: string[]): Promise<void> {
+async function deriveReleasesFromSongs(
+  releaseIds: string[],
+  direction: Direction,
+): Promise<void> {
   if (releaseIds.length === 0) return;
 
   const releases = await prisma.release.findMany({
@@ -64,6 +78,9 @@ async function deriveReleasesFromSongs(releaseIds: string[]): Promise<void> {
 
     const complete = release.tracks.every((track) => track.song?.listened === true);
     if (complete === release.listened) continue;
+    // Only the move this operation could actually have caused.
+    if (complete && direction !== "up") continue;
+    if (!complete && direction !== "down") continue;
 
     await prisma.release.update({
       where: { id: release.id },
@@ -146,7 +163,9 @@ export async function setReleaseListenedDeep(
   const affected = (await releasesCarrying(songIds)).filter(
     (id) => id !== release.id,
   );
-  await deriveReleasesFromSongs(affected);
+  // Marking heard can only complete other releases; un-marking can only
+  // un-complete them.
+  await deriveReleasesFromSongs(affected, listened ? "up" : "down");
 
   return { artistId: release.artistId, releaseIds: [release.id, ...affected] };
 }
@@ -168,7 +187,7 @@ export async function setSongListenedDeep(
   });
 
   const releaseIds = await releasesCarrying([songId]);
-  await deriveReleasesFromSongs(releaseIds);
+  await deriveReleasesFromSongs(releaseIds, listened ? "up" : "down");
 
   return { artistId: song.artistId, releaseIds };
 }
@@ -202,6 +221,8 @@ export async function alignSongsWithRelease(releaseId: string): Promise<void> {
     data: { listened: true },
   });
 
+  // Upwards only. This runs as tracklists arrive, and another release whose own
+  // songs have yet to be fetched is not evidence that it went unheard.
   const affected = (await releasesCarrying(songIds)).filter((id) => id !== releaseId);
-  await deriveReleasesFromSongs(affected);
+  await deriveReleasesFromSongs(affected, "up");
 }

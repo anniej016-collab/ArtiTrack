@@ -146,3 +146,74 @@ test("the export carries the check-out list too", async ({ page }) => {
     }),
   ]);
 });
+
+test("a lead for an artist you already follow says so", async ({ page }) => {
+  await addArtist(page, "Testhead", { heardAlready: false });
+
+  await page.goto("/check-out");
+  await page.fill('input[name="artistName"]', "testhead");
+  await page.getByRole("button", { name: "Add to the list" }).click();
+
+  // Matched despite the casing, and offers their page rather than a search.
+  await expect(page.getByText("you follow them")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Follow" })).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Open" }).click();
+  await expect(page).toHaveURL(/\/artists\//);
+});
+
+test("a paused artist reads as paused, not as followed", async ({ page }) => {
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await page.goto("/");
+  await page.locator("#following").getByRole("button", { name: /Pause/ }).first().click();
+  await expect(page.locator("#paused")).toBeVisible();
+
+  await page.goto("/check-out");
+  await page.fill('input[name="artistName"]', "Testhead");
+  await page.getByRole("button", { name: "Add to the list" }).click();
+
+  await expect(page.getByText("paused in your library")).toBeVisible();
+});
+
+test("a record already ticked off in the tracker is flagged and clearable", async ({
+  page,
+}) => {
+  // Imported as heard, so every release counts as already heard.
+  await addArtist(page, "Testhead", { heardAlready: true });
+
+  await page.goto("/check-out");
+  await openPaste(page);
+  await page.fill(
+    'textarea[name="lines"]',
+    // The first is in the library and heard; the second is new.
+    "Testhead - In Testing\nSomeone Else - A New Thing",
+  );
+  await page.getByRole("button", { name: "Add them all" }).click();
+
+  await expect(page.getByText("Already heard", { exact: true })).toHaveCount(1);
+  await expect(page.getByText("To hear · 2")).toBeVisible();
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: /Remove 1 already heard/ }).click();
+
+  // Only the one the tracker knew about goes; the genuinely new lead stays.
+  await expect(page.getByText("To hear · 1")).toBeVisible();
+  await expect(page.getByText("A New Thing")).toBeVisible();
+  await expect(page.getByText("In Testing")).toHaveCount(0);
+});
+
+test("an unheard record from a followed artist is left as a lead", async ({ page }) => {
+  await addArtist(page, "Testhead", { heardAlready: false });
+
+  await page.goto("/check-out");
+  await openPaste(page);
+  await page.fill('textarea[name="lines"]', "Testhead - In Testing");
+  await page.getByRole("button", { name: "Add them all" }).click();
+
+  // Following them is not the same as having heard this, so no flag and no
+  // offer to clear it away.
+  await expect(page.getByText("you follow them")).toBeVisible();
+  await expect(page.getByText("Already heard", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /already heard/ })).toHaveCount(0);
+});
