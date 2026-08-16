@@ -17,13 +17,25 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
     where: { id },
     include: {
       artist: { select: { id: true, name: true, source: true } },
-      tracks: { orderBy: { position: "asc" } },
+      tracks: {
+        orderBy: { position: "asc" },
+        include: {
+          song: {
+            select: {
+              id: true,
+              listened: true,
+              // How many releases carry this song, so a repeat is visible as one.
+              _count: { select: { tracks: true } },
+            },
+          },
+        },
+      },
     },
   });
 
   if (!release) notFound();
 
-  const heard = release.tracks.filter((track) => track.listened).length;
+  const heard = release.tracks.filter((track) => track.song?.listened).length;
   const canLoadTracks =
     release.artist.source !== "manual" && release.externalId !== null;
 
@@ -80,7 +92,12 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
         </h2>
 
         {release.tracks.length > 0 ? (
-          <TrackList tracks={release.tracks} />
+          <TrackList
+            tracks={release.tracks.map((track) => ({
+              ...track,
+              appearances: track.song?._count.tracks,
+            }))}
+          />
         ) : (
           <div className="panel flex flex-col items-center gap-3 px-5 py-10 text-center">
             <VinylIcon className="size-7 text-white/15" />

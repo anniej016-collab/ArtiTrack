@@ -206,16 +206,27 @@ export async function setSectionState(section: SectionKey, state: SectionState) 
   revalidatePath("/");
 }
 
-export async function setTrackListened(trackId: string, listened: boolean) {
-  const track = await prisma.track.update({
-    where: { id: trackId },
+/**
+ * Marks a song heard, everywhere it appears. The state lives on the song rather
+ * than on one track, so the single, the album and the remaster all move
+ * together — hearing something once shouldn't have to be recorded four times.
+ */
+export async function setSongListened(songId: string, listened: boolean) {
+  const song = await prisma.song.update({
+    where: { id: songId },
     data: { listened, listenedAt: listened ? new Date() : null },
-    select: { releaseId: true, release: { select: { artistId: true } } },
+    select: { artistId: true },
   });
 
   revalidatePath("/");
-  revalidatePath(`/releases/${track.releaseId}`);
-  revalidatePath(`/artists/${track.release.artistId}`);
+  revalidatePath(`/artists/${song.artistId}`);
+  // Any release carrying this song shows a changed count.
+  for (const release of await prisma.release.findMany({
+    where: { tracks: { some: { songId } } },
+    select: { id: true },
+  })) {
+    revalidatePath(`/releases/${release.id}`);
+  }
 }
 
 export async function loadReleaseTracksAction(releaseId: string) {

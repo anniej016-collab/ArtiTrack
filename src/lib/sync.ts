@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { songKey } from "@/lib/song-identity";
 import {
   PROVIDER_KEY,
   fetchArtistReleases,
@@ -151,7 +152,7 @@ export async function syncAllActive(): Promise<SyncAllResult> {
 export async function syncReleaseTracks(releaseId: string): Promise<number | null> {
   const release = await prisma.release.findUnique({
     where: { id: releaseId },
-    select: { id: true, externalId: true, artist: { select: { source: true } } },
+    select: { id: true, artistId: true, externalId: true, artist: { select: { source: true } } },
   });
 
   if (!release?.externalId || release.artist.source !== PROVIDER_KEY) return null;
@@ -159,6 +160,8 @@ export async function syncReleaseTracks(releaseId: string): Promise<number | nul
   const tracks = await fetchReleaseTracks(release.externalId);
 
   for (const track of tracks) {
+    const song = await resolveSong(release.artistId, track.title);
+
     await prisma.track.upsert({
       where: {
         releaseId_externalId: { releaseId: release.id, externalId: track.externalId },
@@ -169,12 +172,16 @@ export async function syncReleaseTracks(releaseId: string): Promise<number | nul
         title: track.title,
         position: track.position,
         duration: track.duration,
+        isrc: track.isrc,
+        songId: song.id,
       },
-      // Never touch listened / listenedAt: that's the user's record.
+      // Listening state lives on the song, so nothing here can overwrite it.
       update: {
         title: track.title,
         position: track.position,
         duration: track.duration,
+        isrc: track.isrc,
+        songId: song.id,
       },
     });
   }
@@ -184,7 +191,53 @@ export async function syncReleaseTracks(releaseId: string): Promise<number | nul
     data: { tracksSyncedAt: new Date() },
   });
 
+  await discardSongsWithoutTracks(release.artistId);
+
   return tracks.length;
+}
+
+/**
+ * Finds the song a title belongs to, creating it if this is its first
+ * appearance.
+ *
+ * The database migration folded existing tracks together with a weaker rule
+ * than this one, so a title may still be sitting under its own unfolded song.
+ * When that happens the two are merged here, keeping the listening state if
+ * either side had it — going through this path is what repairs the backfill.
+ */
+async function resolveSong(artistId: string, title: string) {
+  const key = songKey(title);
+
+  const existing = await prisma.song.findUnique({
+    where: { artistId_key: { artistId, key } },
+  });
+  if (existing) return existing;
+
+  // A song left behind by the migration, keyed on the raw title.
+  const legacyKey = title.toLowerCase().replace(/[^a-z0-9]+/gi, " ").trim();
+  const legacy =
+    legacyKey && legacyKey !== key
+      ? await prisma.song.findUnique({
+          where: { artistId_key: { artistId, key: legacyKey } },
+        })
+      : null;
+
+  if (legacy) {
+    return prisma.song.update({
+      where: { id: legacy.id },
+      data: { key, title },
+    });
+  }
+
+  return prisma.song.create({ data: { artistId, key, title } });
+}
+
+/**
+ * Removes songs nothing points at any more, which re-folding can leave behind.
+ * Songs are derived from tracks, so an empty one carries no information.
+ */
+async function discardSongsWithoutTracks(artistId: string) {
+  await prisma.song.deleteMany({ where: { artistId, tracks: { none: {} } } });
 }
 
 /** How many releases one "load songs" press will fetch. */

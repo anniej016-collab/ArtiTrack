@@ -26,6 +26,8 @@ export type ProviderTrack = {
   title: string;
   position: number;
   duration: number | null;
+  /** Not always present in a bulk tracklist; stored when it is. */
+  isrc: string | null;
 };
 
 class DeezerError extends Error {}
@@ -180,6 +182,7 @@ export async function fetchReleaseTracks(
         title,
         position,
         duration: typeof item["duration"] === "number" ? item["duration"] : null,
+        isrc: str(item["isrc"]),
       },
     ];
   });

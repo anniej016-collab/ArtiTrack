@@ -26,7 +26,20 @@ export default async function ArtistPage({
     include: {
       releases: {
         orderBy: { releaseDate: "desc" },
-        include: { tracks: { orderBy: { position: "asc" } } },
+        include: {
+          tracks: {
+            orderBy: { position: "asc" },
+            include: {
+              song: {
+                select: {
+                  id: true,
+                  listened: true,
+                  _count: { select: { tracks: true } },
+                },
+              },
+            },
+          },
+        },
       },
     },
   });
@@ -43,8 +56,22 @@ export default async function ArtistPage({
   const missingSongs = artist.releases.filter(
     (release) => release.tracksSyncedAt === null && release.externalId !== null,
   ).length;
-  const allTracks = artist.releases.flatMap((release) => release.tracks);
-  const heardTracks = allTracks.filter((track) => track.listened).length;
+  // Counted per song, not per track: the same song on an album and a compilation
+  // is one thing to listen to, not two.
+  const songIds = new Set(
+    artist.releases.flatMap((release) =>
+      release.tracks.flatMap((track) => (track.song ? [track.song.id] : [])),
+    ),
+  );
+  const heardSongIds = new Set(
+    artist.releases.flatMap((release) =>
+      release.tracks.flatMap((track) =>
+        track.song?.listened ? [track.song.id] : [],
+      ),
+    ),
+  );
+  const songCount = songIds.size;
+  const heardSongCount = heardSongIds.size;
 
   return (
     <div className="flex flex-col gap-10">
@@ -145,13 +172,13 @@ export default async function ArtistPage({
                 tab === "songs" ? "bg-white/90 text-black" : "text-faint hover:text-text"
               }`}
             >
-              Songs{allTracks.length > 0 ? ` · ${allTracks.length}` : ""}
+              Songs{songCount > 0 ? ` · ${songCount}` : ""}
             </Link>
           </div>
 
-          {tab === "songs" && allTracks.length > 0 && (
+          {tab === "songs" && songCount > 0 && (
             <p className="text-xs text-faint">
-              {heardTracks} of {allTracks.length} heard
+              {heardSongCount} of {songCount} heard
             </p>
           )}
         </div>
@@ -194,7 +221,7 @@ export default async function ArtistPage({
               )
             ) : (
               releasesWithSongs.map((release) => {
-                const heard = release.tracks.filter((t) => t.listened).length;
+                const heard = release.tracks.filter((t) => t.song?.listened).length;
                 return (
                   <div key={release.id}>
                     <div className="mb-2 flex items-baseline justify-between gap-3">
@@ -208,7 +235,12 @@ export default async function ArtistPage({
                         {heard}/{release.tracks.length}
                       </span>
                     </div>
-                    <TrackList tracks={release.tracks} />
+                    <TrackList
+                      tracks={release.tracks.map((track) => ({
+                        ...track,
+                        appearances: track.song?._count.tracks,
+                      }))}
+                    />
                   </div>
                 );
               })

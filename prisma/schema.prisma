@@ -36,6 +36,7 @@ model Artist {
 
   createdAt DateTime  @default(now())
   releases  Release[]
+  songs     Song[]
 
   // Stops the same provider artist being imported twice. Manually added artists
   // have a null externalId, and Postgres treats nulls as distinct, so any number
@@ -76,6 +77,7 @@ model Release {
   @@index([listened])
 }
 
+/// One track as it appears on one release. The same song may have several.
 model Track {
   id        String  @id @default(cuid())
   releaseId String
@@ -88,15 +90,39 @@ model Track {
   // Same idea as Release.externalId: re-fetching a tracklist updates rows
   // instead of duplicating them.
   externalId String?
+  /// Identifies a recording. Stored for future use; matching is by title today.
+  isrc       String?
 
-  // Track-level listening is kept separate from the release's own flag, so a
-  // part-listened album stays visibly part-listened.
-  listened   Boolean   @default(false)
-  listenedAt DateTime?
+  // Listening state lives on Song, not here, so hearing a track once counts
+  // wherever else that song appears.
+  songId String?
+  song   Song?   @relation(fields: [songId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
   @@unique([releaseId, externalId])
   @@index([releaseId])
+  @@index([songId])
+}
+
+/// A song, independent of which releases carry it. Marking it heard counts
+/// everywhere it appears: the single, the album, the deluxe, the remaster.
+model Song {
+  id       String @id @default(cuid())
+  artistId String
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  /// Identity within the artist, from src/lib/song-identity.ts.
+  key   String
+  title String
+
+  listened   Boolean   @default(false)
+  listenedAt DateTime?
+
+  tracks    Track[]
+  createdAt DateTime @default(now())
+
+  @@unique([artistId, key])
+  @@index([artistId])
   @@index([listened])
 }

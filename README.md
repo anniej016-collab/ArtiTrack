@@ -16,6 +16,9 @@ losing their history.
 - **Group the To listen queue** by artist or by release month, so it's clear whose
   backlog is stacking up. Month headings carry the year only when the queue spans more
   than one.
+- **Hearing a song counts everywhere it appears.** The same song turns up as a single,
+  on the album, on the deluxe edition and on a greatest-hits; ticking any one of them
+  ticks them all, so nothing has to be marked off four times.
 - **Open a release** to see its songs and tick off the ones you've heard. An artist's
   **Songs** tab lists every track across their releases with a heard count. Tracklists
   are fetched per release, in batches, because each one costs a separate request.
@@ -117,10 +120,18 @@ where this project's regressions have been; unit tests could not have caught any
 - `Release` — belongs to an artist; `title`, `type` (`ALBUM`/`EP`/`SINGLE`/`OTHER`),
   `releaseDate`, `coverUrl`, and `externalId`, which is what makes re-syncing
   idempotent. Hand-entered releases have a null `externalId`.
-- `Track` — belongs to a release; `title`, `position`, `duration`, `externalId`. Fetched
-  on demand rather than during an artist sync, since one request per album would make
-  importing a discography very slow. `Release.tracksSyncedAt` records which have been
-  fetched.
+- `Track` — one appearance of a song on one release; `title`, `position`, `duration`,
+  `externalId`, `isrc`. Fetched on demand rather than during an artist sync, since one
+  request per album would make importing a discography very slow.
+  `Release.tracksSyncedAt` records which have been fetched.
+- `Song` — a song independent of its releases, holding the listening state. Tracks are
+  folded into one per artist by `src/lib/song-identity.ts`, which matches on a
+  normalised title: qualifiers describing a repackaging (remaster, deluxe, bonus track,
+  featured credits) are ignored, while ones describing a different performance (live,
+  acoustic, demo, remix) are kept. Matching is by title rather than ISRC because ISRC
+  identifies a *recording*, and a remaster is a different recording — which is exactly
+  the case that needs folding. The cost is that two different songs sharing a name
+  ("Intro" on three albums) fold together.
 - Listening state is `listened` (boolean) plus an optional `listenedAt`, on both releases
   and tracks. `listened` with a null `listenedAt` means "heard, date unknown" — the state
   an imported back catalogue lands in. Track and release listening are independent, so a
