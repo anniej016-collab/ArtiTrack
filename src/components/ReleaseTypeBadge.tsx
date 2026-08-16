@@ -8,12 +8,12 @@ import { CATEGORY_LABELS, releaseCategory } from "@/lib/release-category";
  * now, so switching a chip off visibly hides the badges that match it.
  */
 const styles: Record<string, string> = {
-  album: "bg-amber-400/12 text-amber-200/90 ring-amber-300/20",
+  album: "bg-violet-300/12 text-violet-200/90 ring-violet-300/20",
   ep: "bg-teal-400/12 text-teal-200/90 ring-teal-300/20",
-  single: "bg-rose-400/12 text-rose-200/90 ring-rose-300/20",
-  deluxe: "bg-orange-400/12 text-orange-200/90 ring-orange-300/20",
-  remaster: "bg-orange-400/12 text-orange-200/90 ring-orange-300/20",
-  compilation: "bg-stone-400/12 text-stone-300 ring-stone-300/20",
+  single: "bg-pink-300/12 text-pink-200/90 ring-pink-300/20",
+  deluxe: "bg-fuchsia-300/12 text-fuchsia-200/90 ring-fuchsia-300/20",
+  remaster: "bg-fuchsia-300/12 text-fuchsia-200/90 ring-fuchsia-300/20",
+  compilation: "bg-slate-400/12 text-slate-300 ring-slate-300/20",
   soundtrack: "bg-lime-400/12 text-lime-200/90 ring-lime-300/20",
   live: "bg-sky-400/12 text-sky-200/90 ring-sky-300/20",
 };

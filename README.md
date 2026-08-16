@@ -72,6 +72,16 @@ losing their history.
   paste a playlist in as `Artist - Title` lines — repeats are skipped, so an updated list
   can go straight over the old one. **Follow** on any row hands the name to the tracker's
   own search.
+- **An imported or hand-built artist can be watched too.** Where an artist came from
+  and where their new releases are fetched from are separate questions, so pointing one
+  at Deezer doesn't make a second artist. Open them and press *Check for new releases
+  automatically*. The first sync recognises releases the file already brought in — same
+  title, same year — and adopts them, keeping their tracklists, notes and heard marks
+  rather than listing everything twice.
+- **Link out to a fuller discography.** Each artist can carry a link to a detailed
+  catalogue kept elsewhere, shown as a button at the top of their page. For groups whose
+  releases are spread across units, side projects and soundtracks in ways no service
+  lays out well.
 - **The check-out list knows what's already in the tracker.** A playlist is unfiltered by
   definition, so each row says whether you already follow that artist (or have them
   paused), and flags anything whose song or record you have already ticked off — with a
@@ -89,8 +99,8 @@ date, so "Recently listened" shows genuine recent listens rather than an import.
 
 ## How it looks
 
-Dark and warm rather than the violet-to-pink gradient every streaming service
-uses — amber like a VU meter, on a ground with some brown in it. Section headings
+A pastel lavender, kept deliberately soft and desaturated so it reads as nothing
+like the electric violet-into-magenta the streaming services use. Section headings
 carry the display face at full brightness with a short accent rule, because as quiet
 uppercase labels they were indistinguishable from the small print inside them. The
 header is a two-item nav, Library and Check out, with the current one filled in.

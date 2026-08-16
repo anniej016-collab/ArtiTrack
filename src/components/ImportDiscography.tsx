@@ -36,7 +36,7 @@ export function ImportDiscography() {
           type="checkbox"
           name="markListened"
           defaultChecked
-          className="size-3.5 cursor-pointer accent-amber-500"
+          className="size-3.5 cursor-pointer accent-violet-300"
         />
         Mark everything as already heard
       </label>

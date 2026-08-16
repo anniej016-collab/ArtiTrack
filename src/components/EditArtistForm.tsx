@@ -7,7 +7,12 @@ import { updateArtist } from "@/lib/actions";
 export function EditArtistForm({
   artist,
 }: {
-  artist: { id: string; name: string; imageUrl: string | null };
+  artist: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+    discographyUrl: string | null;
+  };
 }) {
   return (
     <form
@@ -47,9 +52,27 @@ export function EditArtistForm({
           />
         </div>
       </div>
+      <div>
+        <label
+          htmlFor="artist-discography"
+          className="mb-1.5 block text-xs font-medium text-muted"
+        >
+          Full discography link
+        </label>
+        <input
+          id="artist-discography"
+          name="discographyUrl"
+          type="url"
+          defaultValue={artist.discographyUrl ?? ""}
+          placeholder="https://…"
+          className="field w-full px-3 py-2 text-sm"
+        />
+      </div>
+
       <p className="text-xs text-faint">
-        Right-click any picture on the web and copy its image address. Leave it empty
-        for the record-sleeve placeholder.
+        For a picture, right-click any image on the web and copy its address. The
+        discography link is for a fuller reference kept elsewhere — it shows as a button
+        at the top of this page.
       </p>
       <button type="submit" className="btn-primary self-start px-4 py-2 text-sm">
         Save artist

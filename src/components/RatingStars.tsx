@@ -29,7 +29,7 @@ export function RatingStars({
               aria-pressed={filled}
               title={isCurrent ? "Clear rating" : `Rate ${star} out of 5`}
               className={`flex size-6 items-center justify-center rounded transition ${
-                filled ? "text-amber-300" : "text-white/20 hover:text-white/40"
+                filled ? "text-accent" : "text-white/20 hover:text-white/40"
               }`}
             >
               <svg viewBox="0 0 20 20" aria-hidden="true" className="size-4">

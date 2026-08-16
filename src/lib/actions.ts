@@ -175,7 +175,57 @@ export async function updateArtist(artistId: string, formData: FormData) {
 
   await prisma.artist.update({
     where: { id: artistId },
-    data: { name, imageUrl: imageField(formData, "imageUrl") },
+    data: {
+      name,
+      imageUrl: imageField(formData, "imageUrl"),
+      discographyUrl: imageField(formData, "discographyUrl"),
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/artists/${artistId}`);
+}
+
+/**
+ * Points an artist at a service to be checked for new releases.
+ *
+ * Separate from how they got here: an artist imported from a file, or added by
+ * hand, is still the same artist once a service is attached, and everything
+ * already recorded against them stays put. The first sync recognises releases
+ * the file already brought in rather than listing them twice.
+ */
+export async function linkArtistForSync(
+  artistId: string,
+  source: string,
+  externalId: string,
+  imageUrl: string | null,
+) {
+  if (!getProvider(source) || !externalId) return;
+
+  const artist = await prisma.artist.findUnique({
+    where: { id: artistId },
+    select: { imageUrl: true },
+  });
+
+  await prisma.artist.update({
+    where: { id: artistId },
+    data: {
+      syncSource: source,
+      syncExternalId: externalId,
+      // Only fill a gap — a picture chosen by hand outranks the service's.
+      imageUrl: artist?.imageUrl ?? imageUrl,
+    },
+  });
+
+  await syncArtist(artistId);
+
+  revalidatePath("/", "layout");
+}
+
+export async function unlinkArtistFromSync(artistId: string) {
+  await prisma.artist.update({
+    where: { id: artistId },
+    data: { syncSource: null, syncExternalId: null },
   });
 
   revalidatePath("/");
@@ -259,7 +309,16 @@ export async function importArtistAction(
     const releases = await provider.fetchArtistReleases(externalId);
 
     const artist = await prisma.artist.create({
-      data: { name, imageUrl, source, externalId, lastSyncedAt: new Date() },
+      data: {
+        name,
+        imageUrl,
+        source,
+        externalId,
+        // Added from a service, so that is also where new releases come from.
+        syncSource: source,
+        syncExternalId: externalId,
+        lastSyncedAt: new Date(),
+      },
     });
 
     const { added } = await persistReleases(artist.id, releases, { markListened });

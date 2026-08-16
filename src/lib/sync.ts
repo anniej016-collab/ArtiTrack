@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { alignSongsWithRelease } from "@/lib/listening";
 import { songKey } from "@/lib/song-identity";
+import { releaseMatchKey } from "@/lib/release-match";
 import {
   SYNCABLE_SOURCES,
   TRACK_SOURCES,
@@ -30,22 +31,74 @@ export async function persistReleases(
   { markListened }: { markListened: boolean },
 ): Promise<SyncResult> {
   const existing = await prisma.release.findMany({
-    where: { artistId, externalId: { not: null } },
-    select: { externalId: true },
+    where: { artistId },
+    select: {
+      id: true,
+      externalId: true,
+      title: true,
+      releaseDate: true,
+      coverUrl: true,
+    },
   });
-  const known = new Set(existing.map((release) => release.externalId));
+  const known = new Set(
+    existing.flatMap((release) => (release.externalId ? [release.externalId] : [])),
+  );
+
+  /*
+   * Releases this artist already has that the provider has never claimed —
+   * imported from a file or logged by hand. A record can reach the tracker by
+   * both routes, and without matching them the same album would appear twice:
+   * once from the file with its tracklist, once from Deezer.
+   */
+  const unclaimed = new Map<string, string>();
+  for (const release of existing) {
+    if (release.externalId) continue;
+    const key = releaseMatchKey(release.title, release.releaseDate);
+    // Only where it is unambiguous; two records that normalise alike are left
+    // alone rather than guessed at.
+    unclaimed.set(key, unclaimed.has(key) ? "" : release.id);
+  }
 
   let added = 0;
   let updated = 0;
 
   for (const release of releases) {
-    const isNew = !known.has(release.externalId);
+    if (known.has(release.externalId)) {
+      await prisma.release.update({
+        where: { artistId_externalId: { artistId, externalId: release.externalId } },
+        // Refresh metadata that can change upstream, but never touch the
+        // listened fields: those are the user's own record, not the provider's.
+        data: {
+          title: release.title,
+          type: release.type,
+          releaseDate: release.releaseDate,
+          coverUrl: release.coverUrl,
+        },
+      });
+      updated += 1;
+      continue;
+    }
 
-    await prisma.release.upsert({
-      where: {
-        artistId_externalId: { artistId, externalId: release.externalId },
-      },
-      create: {
+    const match = unclaimed.get(releaseMatchKey(release.title, release.releaseDate));
+    if (match) {
+      // Adopt it: the row keeps its tracklist, notes and listened state, and
+      // gains the provider id so later syncs recognise it outright.
+      await prisma.release.update({
+        where: { id: match },
+        data: {
+          externalId: release.externalId,
+          // An imported cover is chosen; a provider's is whatever it has. Only
+          // fill a gap.
+          coverUrl: existing.find((row) => row.id === match)?.coverUrl ?? release.coverUrl,
+        },
+      });
+      unclaimed.delete(releaseMatchKey(release.title, release.releaseDate));
+      updated += 1;
+      continue;
+    }
+
+    await prisma.release.create({
+      data: {
         artistId,
         externalId: release.externalId,
         title: release.title,
@@ -55,18 +108,8 @@ export async function persistReleases(
         listened: markListened,
         listenedAt: null,
       },
-      // Refresh metadata that can change upstream, but never touch the listened
-      // fields: those are the user's own record, not the provider's.
-      update: {
-        title: release.title,
-        type: release.type,
-        releaseDate: release.releaseDate,
-        coverUrl: release.coverUrl,
-      },
     });
-
-    if (isNew) added += 1;
-    else updated += 1;
+    added += 1;
   }
 
   return { added, updated };
@@ -81,17 +124,17 @@ export async function persistReleases(
 export async function syncArtist(artistId: string): Promise<SyncResult | null> {
   const artist = await prisma.artist.findUnique({
     where: { id: artistId },
-    select: { id: true, status: true, source: true, externalId: true },
+    select: { id: true, status: true, syncSource: true, syncExternalId: true },
   });
 
   if (!artist) return null;
   if (artist.status === "PAUSED") return null;
-  if (!artist.externalId) return null;
+  if (!artist.syncSource || !artist.syncExternalId) return null;
 
-  const provider = getProvider(artist.source);
+  const provider = getProvider(artist.syncSource);
   if (!provider) return null;
 
-  const releases = await provider.fetchArtistReleases(artist.externalId);
+  const releases = await provider.fetchArtistReleases(artist.syncExternalId);
   const result = await persistReleases(artist.id, releases, {
     markListened: false,
   });
@@ -137,8 +180,8 @@ export async function syncAllActive(
   const artists = await prisma.artist.findMany({
     where: {
       status: "ACTIVE",
-      source: { in: SYNCABLE_SOURCES },
-      externalId: { not: null },
+      syncSource: { in: SYNCABLE_SOURCES },
+      syncExternalId: { not: null },
     },
     // Nulls first: an artist never checked is the most overdue there is.
     orderBy: { lastSyncedAt: { sort: "asc", nulls: "first" } },
@@ -171,8 +214,8 @@ export async function countSyncableArtists(): Promise<number> {
   return prisma.artist.count({
     where: {
       status: "ACTIVE",
-      source: { in: SYNCABLE_SOURCES },
-      externalId: { not: null },
+      syncSource: { in: SYNCABLE_SOURCES },
+      syncExternalId: { not: null },
     },
   });
 }
@@ -186,13 +229,18 @@ export async function countSyncableArtists(): Promise<number> {
 export async function syncReleaseTracks(releaseId: string): Promise<number | null> {
   const release = await prisma.release.findUnique({
     where: { id: releaseId },
-    select: { id: true, artistId: true, externalId: true, artist: { select: { source: true } } },
+    select: {
+      id: true,
+      artistId: true,
+      externalId: true,
+      artist: { select: { syncSource: true } },
+    },
   });
 
-  if (!release?.externalId) return null;
+  if (!release?.externalId || !release.artist.syncSource) return null;
 
   // Some sources carry releases but no affordable way to reach a tracklist.
-  const fetchReleaseTracks = getProvider(release.artist.source)?.fetchReleaseTracks;
+  const fetchReleaseTracks = getProvider(release.artist.syncSource)?.fetchReleaseTracks;
   if (!fetchReleaseTracks) return null;
 
   const tracks = await fetchReleaseTracks(release.externalId);
@@ -303,7 +351,7 @@ export async function syncArtistTracks(artistId: string): Promise<TrackBatchResu
       artistId,
       externalId: { not: null },
       tracksSyncedAt: null,
-      artist: { source: { in: TRACK_SOURCES } },
+      artist: { syncSource: { in: TRACK_SOURCES } },
     },
     orderBy: { releaseDate: "desc" },
     select: { id: true },

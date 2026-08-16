@@ -56,11 +56,11 @@ export async function applyImport(
   // release whose title was corrected upstream no longer matches its old key
   // and has to be recognised some other way.
   const existing = await prisma.release.findMany({
-    where: { artistId: { in: [...artistIdByName.values()] }, externalId: { not: null } },
+    where: { artistId: { in: [...artistIdByName.values()] }, importKey: { not: null } },
     select: {
       id: true,
       artistId: true,
-      externalId: true,
+      importKey: true,
       title: true,
       releaseDate: true,
       coverUrl: true,
@@ -69,7 +69,7 @@ export async function applyImport(
     },
   });
   const existingByKey = new Map(
-    existing.map((release) => [`${release.artistId}|${release.externalId}`, release]),
+    existing.map((release) => [`${release.artistId}|${release.importKey}`, release]),
   );
 
   const fresh: ImportedRelease[] = [];
@@ -100,12 +100,7 @@ export async function applyImport(
     }
     claimed.add(already.id);
 
-    const differs =
-      already.title !== release.title ||
-      already.releaseDate.getTime() !== release.releaseDate.getTime() ||
-      already.coverUrl !== release.coverUrl ||
-      already.notes !== release.notes;
-    if (differs) changed.push({ id: already.id, release });
+    if (hasChanged(already, release)) changed.push({ id: already.id, release });
 
     // Only rewrite a tracklist that isn't there or has changed length; an
     // unchanged re-import should touch nothing.
@@ -126,7 +121,7 @@ export async function applyImport(
       (row) =>
         row.artistId === artistId &&
         !claimed.has(row.id) &&
-        !fileKeys.has(`${row.artistId}|${row.externalId}`) &&
+        !fileKeys.has(`${row.artistId}|${row.importKey}`) &&
         row.releaseDate.getTime() === release.releaseDate.getTime(),
     );
 
@@ -148,7 +143,7 @@ export async function applyImport(
     await prisma.release.createMany({
       data: fresh.map((release) => ({
         artistId: artistIdByName.get(release.artistName)!,
-        externalId: release.externalId,
+        importKey: release.externalId,
         title: release.title,
         type: release.type,
         releaseDate: release.releaseDate,
@@ -173,10 +168,13 @@ export async function applyImport(
         title: release.title,
         type: release.type,
         releaseDate: release.releaseDate,
-        coverUrl: release.coverUrl,
-        notes: release.notes,
+        // Only where the file has something to say. A release the file gives no
+        // cover for may have picked one up from a service since, and silence in
+        // the file is not an instruction to throw that away.
+        ...(release.coverUrl ? { coverUrl: release.coverUrl } : {}),
+        ...(release.notes ? { notes: release.notes } : {}),
         // Carries the new key too, so the next import matches it outright.
-        externalId: release.externalId,
+        importKey: release.externalId,
       },
     });
   }
@@ -191,6 +189,25 @@ export async function applyImport(
     releasesUpdated: changed.length,
     tracksWritten,
   };
+}
+
+/**
+ * Whether the file actually says something different from what is stored.
+ *
+ * Absence in the file counts as no opinion rather than as a deletion, so a
+ * cover or note picked up elsewhere survives a re-import — otherwise every
+ * import would undo what a sync had just filled in, and each would report the
+ * other's work as a change.
+ */
+function hasChanged(
+  current: { title: string; releaseDate: Date; coverUrl: string | null; notes: string | null },
+  incoming: ImportedRelease,
+): boolean {
+  if (current.title !== incoming.title) return true;
+  if (current.releaseDate.getTime() !== incoming.releaseDate.getTime()) return true;
+  if (incoming.coverUrl && incoming.coverUrl !== current.coverUrl) return true;
+  if (incoming.notes && incoming.notes !== current.notes) return true;
+  return false;
 }
 
 async function writeTracks(
@@ -229,12 +246,12 @@ async function writeTracks(
   const ids = await prisma.release.findMany({
     where: {
       artistId: { in: artistIds },
-      externalId: { in: wanted.map((release) => release.externalId) },
+      importKey: { in: wanted.map((release) => release.externalId) },
     },
-    select: { id: true, artistId: true, externalId: true },
+    select: { id: true, artistId: true, importKey: true },
   });
   const releaseIdByKey = new Map(
-    ids.map((release) => [`${release.artistId}|${release.externalId}`, release.id]),
+    ids.map((release) => [`${release.artistId}|${release.importKey}`, release.id]),
   );
 
   // Replaced wholesale: the file is the authority on what is on a record, and

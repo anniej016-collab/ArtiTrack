@@ -199,8 +199,8 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     name: true,
     imageUrl: true,
     status: true,
-    source: true,
-    externalId: true,
+    syncSource: true,
+    syncExternalId: true,
     _count: { select: { releases: true } },
   } as const;
 
@@ -276,7 +276,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     total > (viewModes[section] === "list" ? LIST_PREVIEW : PREVIEW_MIN);
 
   const syncableCount = activeArtists.filter(
-    (artist) => isSyncableSource(artist.source) && artist.externalId,
+    (artist) => artist.syncSource && isSyncableSource(artist.syncSource) && artist.syncExternalId,
   ).length;
   const hasLibrary = activeArtists.length > 0 || pausedArtists.length > 0;
 

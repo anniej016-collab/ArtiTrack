@@ -4,26 +4,28 @@
  * Dark-only on purpose. This is a music library, and the artwork is the point:
  * covers read better against a dark ground, and every listening app the user
  * already knows works this way.
- */
-/*
- * Warm rather than violet. A purple-to-pink gradient on near-black is what
- * every streaming service already looks like; this leans on hi-fi instead —
- * amber like a VU meter or a record label, on a ground with a little brown in
- * it rather than blue.
+ *
+ * Pastel lavender, kept deliberately soft.
+ *
+ * The streaming services all use an electric violet running into magenta; this
+ * stays well clear of that by being desaturated and pale rather than neon — a
+ * lilac that sits quietly on the page instead of glowing off it. The ground is
+ * a cool near-black with a little blue in it, which lavender needs to read as
+ * pastel rather than muddy.
  */
 :root {
-  --bg: #0c0a08;
-  --panel: rgba(255, 247, 235, 0.04);
-  --panel-hover: rgba(255, 247, 235, 0.075);
-  --line: rgba(255, 240, 220, 0.1);
-  --text: #f6f2ea;
-  --muted: #a49b8d;
-  --faint: #756d61;
-  --accent: #e9a33c;
-  --accent-2: #d2593a;
-  /* Dark ink for text sitting on the accent, which is far too bright for white. */
-  --on-accent: #1a1206;
-  --success: #5cc98d;
+  --bg: #0b0a0f;
+  --panel: rgba(240, 238, 255, 0.042);
+  --panel-hover: rgba(240, 238, 255, 0.078);
+  --line: rgba(226, 222, 255, 0.1);
+  --text: #f2f1f7;
+  --muted: #a09cb4;
+  --faint: #6f6b84;
+  --accent: #c3b0f0;
+  --accent-2: #9fc4ee;
+  /* Dark ink for text on the accent: a pastel is far too pale to carry white. */
+  --on-accent: #191428;
+  --success: #7fd8a4;
 }
 
 @theme inline {
@@ -50,10 +52,10 @@ body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-sans), system-ui, sans-serif;
-  /* One warm light up top, like a lamp over a turntable. */
+  /* Two pale washes up top, so the page isn't a flat slab of black. */
   background-image:
-    radial-gradient(70rem 32rem at 18% -10%, rgba(233, 163, 60, 0.13), transparent 62%),
-    radial-gradient(46rem 24rem at 96% -16%, rgba(210, 89, 58, 0.1), transparent 62%);
+    radial-gradient(70rem 32rem at 18% -10%, rgba(195, 176, 240, 0.14), transparent 62%),
+    radial-gradient(46rem 24rem at 96% -16%, rgba(159, 196, 238, 0.1), transparent 62%);
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
@@ -109,7 +111,7 @@ body {
 
   .btn-primary {
     background-image: linear-gradient(135deg, var(--accent), var(--accent-2));
-    /* Dark ink, not white: amber is far too bright to carry white text. */
+    /* Dark ink, not white: the accent is far too pale to carry white text. */
     color: var(--on-accent);
     font-weight: 650;
     border-radius: 0.625rem;
@@ -145,8 +147,8 @@ body {
   }
   .field:focus {
     outline: none;
-    border-color: rgba(233, 163, 60, 0.65);
-    box-shadow: 0 0 0 3px rgba(233, 163, 60, 0.16);
+    border-color: rgba(195, 176, 240, 0.7);
+    box-shadow: 0 0 0 3px rgba(195, 176, 240, 0.18);
   }
 
   /* The selected half of a segmented control, wherever one appears. */

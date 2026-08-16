@@ -29,10 +29,20 @@ model Artist {
   status   FollowStatus @default(ACTIVE)
   pausedAt DateTime?
 
-  // Where this artist came from: "manual", or a provider key such as "deezer".
-  source       String    @default("manual")
-  externalId   String?
-  lastSyncedAt DateTime?
+  // Where this artist came from: "manual", "import", or a provider key such as
+  // as "deezer". This is their origin, and is not what decides syncing.
+  source     String  @default("manual")
+  externalId String?
+
+  // Where new releases are fetched from, which is a separate question. An
+  // artist imported from a file has an origin but nothing to sync from until
+  // one is chosen, and choosing one must not make them a second artist.
+  syncSource     String?
+  syncExternalId String?
+  lastSyncedAt   DateTime?
+
+  /// A fuller discography kept elsewhere, for catalogues no service covers well.
+  discographyUrl String?
 
   createdAt DateTime  @default(now())
   releases  Release[]
@@ -68,12 +78,17 @@ model Release {
   // Null for releases entered by hand.
   externalId String?
 
+  /// Key from an imported file, kept apart from the provider id so a release
+  /// can be matched by either — the same record can come from both.
+  importKey String?
+
   // Tracklists are fetched per release rather than during an artist sync: one
   // request per album would make importing a large discography very slow.
   tracks         Track[]
   tracksSyncedAt DateTime?
 
   @@unique([artistId, externalId])
+  @@unique([artistId, importKey])
   @@index([artistId])
   @@index([releaseDate])
   @@index([listened])

@@ -10,6 +10,7 @@ import { TrackList } from "@/components/TrackList";
 import { LoadArtistTracksButton } from "@/components/LoadTracksButton";
 import { ArtistNotes } from "@/components/ArtistNotes";
 import { EditArtistForm } from "@/components/EditArtistForm";
+import { LinkForSync } from "@/components/LinkForSync";
 import { VinylIcon } from "@/components/icons";
 import { deleteArtist } from "@/lib/actions";
 import { isSyncableSource, providerLabel, supportsTracks } from "@/lib/providers";
@@ -51,8 +52,13 @@ export default async function ArtistPage({
   if (!artist) notFound();
 
   const listenedCount = artist.releases.filter((release) => release.listened).length;
-  const isSyncable = isSyncableSource(artist.source) && artist.externalId !== null;
-  const canLoadTracks = supportsTracks(artist.source);
+  // Where releases are fetched from, which is separate from where the artist
+  // came from: an imported artist can be pointed at a service later.
+  const syncSource = artist.syncSource;
+  const isSyncable =
+    syncSource !== null && isSyncableSource(syncSource) && artist.syncExternalId !== null;
+  const canLoadTracks = syncSource !== null && supportsTracks(syncSource);
+  const isImported = artist.source === IMPORT_SOURCE;
   const isPaused = artist.status === "PAUSED";
 
   const releasesWithSongs = artist.releases.filter(
@@ -139,7 +145,21 @@ export default async function ArtistPage({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {/* A fuller reference kept outside the tracker, for a catalogue no
+                service lays out well. */}
+            {artist.discographyUrl && (
+              <a
+                href={artist.discographyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-ghost inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
+                title="Open the full discography in a new tab"
+              >
+                Full discography
+                <span aria-hidden="true" className="text-[0.7rem]">↗</span>
+              </a>
+            )}
             {isSyncable && !isPaused && <SyncArtistButton artistId={artist.id} />}
             <StatusToggleButton artistId={artist.id} status={artist.status} />
           </div>
@@ -150,15 +170,23 @@ export default async function ArtistPage({
         {isPaused
           ? "Paused, so nothing new is pulled in. Everything below stays exactly as it is."
           : isSyncable
-            ? `Releases come from ${providerLabel(artist.source)}.${
+            ? `${isImported ? "Imported from a file, and checked against" : "Releases come from"} ${providerLabel(syncSource!)}.${
                 artist.lastSyncedAt
                   ? ` Last checked ${formatDate(artist.lastSyncedAt)}.`
                   : ""
               }${canLoadTracks ? "" : " It doesn't publish song lists, so releases only."}`
-            : artist.source === IMPORT_SOURCE
+            : isImported
               ? "Imported from a discography file. Re-import it to bring in changes."
               : "Added by hand — log releases yourself below."}
       </p>
+
+      {/* Nothing is watching for new releases yet, which is the one thing an
+          imported or hand-built artist is missing. */}
+      {!isSyncable && !isPaused && (
+        <div className="-mt-6">
+          <LinkForSync artistId={artist.id} artistName={artist.name} />
+        </div>
+      )}
 
       {/* Directly under the hero: what you think of an artist is the reason you
           opened their page, not a footnote to it. */}

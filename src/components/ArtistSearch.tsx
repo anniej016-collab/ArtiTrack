@@ -55,7 +55,7 @@ function ImportButton({
           type="checkbox"
           name="markListened"
           defaultChecked
-          className="size-3.5 shrink-0 cursor-pointer accent-violet-500"
+          className="size-3.5 shrink-0 cursor-pointer accent-violet-300"
         />
         <span className="sm:hidden">Heard</span>
         <span className="hidden sm:inline">Heard already</span>
