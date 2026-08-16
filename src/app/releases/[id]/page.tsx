@@ -8,6 +8,7 @@ import { LoadReleaseTracksButton } from "@/components/LoadTracksButton";
 import { RatingStars } from "@/components/RatingStars";
 import { EditReleaseForm } from "@/components/EditReleaseForm";
 import { CoverPlaceholder, VinylIcon } from "@/components/icons";
+import { providerLabel, supportsTracks } from "@/lib/providers";
 import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
 
   const heard = release.tracks.filter((track) => track.song?.listened).length;
   const canLoadTracks =
-    release.artist.source !== "manual" && release.externalId !== null;
+    supportsTracks(release.artist.source) && release.externalId !== null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -119,7 +120,9 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
             <p className="max-w-xs text-sm text-muted">
               {canLoadTracks
                 ? "Song list hasn't been fetched yet."
-                : "This release was added by hand, so there's no song list to fetch."}
+                : release.externalId === null
+                  ? "This release was added by hand, so there's no song list to fetch."
+                  : `${providerLabel(release.artist.source)} doesn't publish song lists, so there's nothing to fetch.`}
             </p>
             {canLoadTracks && <LoadReleaseTracksButton releaseId={release.id} />}
           </div>

@@ -84,6 +84,8 @@ export default defineConfig({
       command: `npx next dev -p ${PORT}`,
       env: {
         DEEZER_API_BASE: `http://127.0.0.1:${MOCK_PORT}`,
+        MUSICBRAINZ_API_BASE: `http://127.0.0.1:${MOCK_PORT}/mb`,
+        COVER_ART_API_BASE: `http://127.0.0.1:${MOCK_PORT}/coverart`,
         DATABASE_URL: process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ?? "",
         // The suite runs unlocked. Next refuses to run two dev servers in one
         // directory, so the gate can't have an instance of its own here; its

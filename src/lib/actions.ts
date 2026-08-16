@@ -21,11 +21,10 @@ import type { GroupMode } from "@/lib/grouping";
 import { prisma } from "@/lib/prisma";
 import type { ReleaseType } from "@/generated/prisma/enums";
 import {
-  PROVIDER_KEY,
-  fetchArtistReleases,
-  searchArtists,
+  getProvider,
+  searchArtistsEverywhere,
   type ProviderArtist,
-} from "@/lib/providers/deezer";
+} from "@/lib/providers";
 import {
   persistReleases,
   syncAllActive,
@@ -100,6 +99,8 @@ export async function setReleaseListened(releaseId: string, listened: boolean) {
 export type SearchState = {
   query: string;
   results: ProviderArtist[];
+  /** Set when the results came from the fallback source, which is worth saying. */
+  usedFallback: boolean;
   error: string | null;
 };
 
@@ -108,14 +109,16 @@ export async function searchArtistsAction(
   formData: FormData,
 ): Promise<SearchState> {
   const query = String(formData.get("query") ?? "").trim();
-  if (!query) return { query, results: [], error: null };
+  if (!query) return { query, results: [], usedFallback: false, error: null };
 
   try {
-    return { query, results: await searchArtists(query), error: null };
+    const { results, usedFallback } = await searchArtistsEverywhere(query);
+    return { query, results, usedFallback, error: null };
   } catch (error) {
     return {
       query,
       results: [],
+      usedFallback: false,
       error: error instanceof Error ? error.message : "Search failed.",
     };
   }
@@ -133,6 +136,8 @@ export async function importArtistAction(
   const externalId = String(formData.get("externalId") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const imageUrl = String(formData.get("imageUrl") ?? "").trim() || null;
+  // Which catalogue this result came from; ids are only meaningful to their own.
+  const source = String(formData.get("source") ?? "").trim();
   // Unchecked boxes are absent from FormData entirely.
   const markListened = formData.get("markListened") !== null;
 
@@ -140,8 +145,13 @@ export async function importArtistAction(
     return { message: null, error: "Missing artist details." };
   }
 
+  const provider = getProvider(source);
+  if (!provider) {
+    return { message: null, error: "That result came from an unknown source." };
+  }
+
   const existing = await prisma.artist.findUnique({
-    where: { source_externalId: { source: PROVIDER_KEY, externalId } },
+    where: { source_externalId: { source, externalId } },
     select: { name: true },
   });
   if (existing) {
@@ -149,10 +159,10 @@ export async function importArtistAction(
   }
 
   try {
-    const releases = await fetchArtistReleases(externalId);
+    const releases = await provider.fetchArtistReleases(externalId);
 
     const artist = await prisma.artist.create({
-      data: { name, imageUrl, source: PROVIDER_KEY, externalId, lastSyncedAt: new Date() },
+      data: { name, imageUrl, source, externalId, lastSyncedAt: new Date() },
     });
 
     const { added } = await persistReleases(artist.id, releases, { markListened });

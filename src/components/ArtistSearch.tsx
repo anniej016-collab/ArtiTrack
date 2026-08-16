@@ -9,13 +9,23 @@ import {
 } from "@/lib/actions";
 import { CheckIcon, VinylIcon } from "@/components/icons";
 
-const emptySearch: SearchState = { query: "", results: [], error: null };
+const emptySearch: SearchState = {
+  query: "",
+  results: [],
+  usedFallback: false,
+  error: null,
+};
 const emptyImport: ImportState = { message: null, error: null };
 
 function ImportButton({
   artist,
 }: {
-  artist: { externalId: string; name: string; imageUrl: string | null };
+  artist: {
+    source: string;
+    externalId: string;
+    name: string;
+    imageUrl: string | null;
+  };
 }) {
   const [state, action, pending] = useActionState(importArtistAction, emptyImport);
 
@@ -29,6 +39,7 @@ function ImportButton({
 
   return (
     <form action={action} className="flex shrink-0 items-center gap-2.5">
+      <input type="hidden" name="source" value={artist.source} />
       <input type="hidden" name="externalId" value={artist.externalId} />
       <input type="hidden" name="name" value={artist.name} />
       <input type="hidden" name="imageUrl" value={artist.imageUrl ?? ""} />
@@ -92,11 +103,18 @@ export function ArtistSearch() {
         <p className="text-sm text-faint">No artists found for “{state.query}”.</p>
       )}
 
+      {state.usedFallback && state.results.length > 0 && (
+        <p className="text-xs text-faint">
+          Not on Deezer, so these come from MusicBrainz instead — releases only, no
+          artwork or song lists.
+        </p>
+      )}
+
       {state.results.length > 0 && (
         <ul className="panel divide-y divide-line overflow-hidden">
           {state.results.map((artist) => (
             <li
-              key={artist.externalId}
+              key={`${artist.source}:${artist.externalId}`}
               className="row-hover flex items-center justify-between gap-3 px-4 py-3"
             >
               <div className="flex min-w-0 items-center gap-3">

@@ -7,6 +7,8 @@ const API_BASE = process.env.DEEZER_API_BASE ?? "https://api.deezer.com";
 export const PROVIDER_KEY = "deezer";
 
 export type ProviderArtist = {
+  /** Which provider this came from, so an import knows where to fetch from later. */
+  source: string;
   externalId: string;
   name: string;
   imageUrl: string | null;
@@ -117,6 +119,7 @@ export async function searchArtists(query: string): Promise<ProviderArtist[]> {
 
     return [
       {
+        source: PROVIDER_KEY,
         externalId,
         name,
         imageUrl: str(item["picture_medium"]) ?? str(item["picture"]),

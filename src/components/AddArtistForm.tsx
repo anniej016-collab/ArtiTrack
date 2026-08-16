@@ -11,7 +11,7 @@ export function AddArtistForm() {
           id="name"
           name="name"
           required
-          placeholder="Someone Deezer doesn't know"
+          placeholder="Someone the search can't find"
           className="field w-full px-3 py-2 text-sm"
         />
       </div>

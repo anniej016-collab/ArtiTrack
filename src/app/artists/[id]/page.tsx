@@ -11,6 +11,7 @@ import { LoadArtistTracksButton } from "@/components/LoadTracksButton";
 import { ArtistNotes } from "@/components/ArtistNotes";
 import { VinylIcon } from "@/components/icons";
 import { deleteArtist } from "@/lib/actions";
+import { isSyncableSource, providerLabel, supportsTracks } from "@/lib/providers";
 import { formatDate } from "@/lib/format";
 
 export default async function ArtistPage({
@@ -48,15 +49,18 @@ export default async function ArtistPage({
   if (!artist) notFound();
 
   const listenedCount = artist.releases.filter((release) => release.listened).length;
-  const isSyncable = artist.source !== "manual" && artist.externalId !== null;
+  const isSyncable = isSyncableSource(artist.source) && artist.externalId !== null;
+  const canLoadTracks = supportsTracks(artist.source);
   const isPaused = artist.status === "PAUSED";
 
   const releasesWithSongs = artist.releases.filter(
     (release) => release.tracks.length > 0,
   );
-  const missingSongs = artist.releases.filter(
-    (release) => release.tracksSyncedAt === null && release.externalId !== null,
-  ).length;
+  const missingSongs = canLoadTracks
+    ? artist.releases.filter(
+        (release) => release.tracksSyncedAt === null && release.externalId !== null,
+      ).length
+    : 0;
   // Counted per song, not per track: the same song on an album and a compilation
   // is one thing to listen to, not two.
   const songIds = new Set(
@@ -144,11 +148,11 @@ export default async function ArtistPage({
         {isPaused
           ? "Paused, so nothing new is pulled in. Everything below stays exactly as it is."
           : isSyncable
-            ? `Releases come from Deezer.${
+            ? `Releases come from ${providerLabel(artist.source)}.${
                 artist.lastSyncedAt
                   ? ` Last checked ${formatDate(artist.lastSyncedAt)}.`
                   : ""
-              }`
+              }${canLoadTracks ? "" : " It doesn't publish song lists, so releases only."}`
             : "Added by hand — log releases yourself below."}
       </p>
 
@@ -217,7 +221,11 @@ export default async function ArtistPage({
               missingSongs === 0 && (
                 <div className="panel flex flex-col items-center gap-3 px-5 py-10 text-center">
                   <VinylIcon className="size-7 text-white/15" />
-                  <p className="text-sm text-muted">No songs to show.</p>
+                  <p className="max-w-xs text-sm text-muted">
+                    {isSyncable && !canLoadTracks
+                      ? `${providerLabel(artist.source)} doesn't publish song lists, so there's nothing to fetch here.`
+                      : "No songs to show."}
+                  </p>
                 </div>
               )
             ) : (

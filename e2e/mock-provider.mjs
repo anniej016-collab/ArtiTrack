@@ -1,8 +1,10 @@
 /**
- * Stand-in for api.deezer.com, shaped like the real responses.
+ * Stand-in for api.deezer.com, shaped like the real responses, plus a
+ * MusicBrainz stand-in under /mb for the fallback path.
  *
- * Tests run against this rather than the live service so they are deterministic
- * and work offline. Point the app at it with DEEZER_API_BASE.
+ * Tests run against this rather than the live services so they are
+ * deterministic and work offline. Point the app at it with DEEZER_API_BASE and
+ * MUSICBRAINZ_API_BASE.
  */
 import { createServer } from "node:http";
 import { createHash } from "node:crypto";
@@ -100,6 +102,46 @@ const TRACKS = {
   ],
 };
 
+/**
+ * MusicBrainz side. These artists are deliberately absent from the Deezer list
+ * above, which is the only way the fallback is ever reached.
+ */
+const MB_ARTISTS = [
+  { id: "mb-0001", name: "Obscure Test Collective" },
+  { id: "mb-0002", name: "Obscure Test Duo" },
+];
+
+const MB_RELEASE_GROUPS = {
+  "mb-0001": [
+    {
+      id: "mbrg-1",
+      title: "Field Recordings",
+      "first-release-date": "2026-05-04",
+      "primary-type": "Album",
+    },
+    // Year-only date: MusicBrainz often knows no more than that.
+    { id: "mbrg-2", title: "Early Tapes", "first-release-date": "2011", "primary-type": "Album" },
+    // A secondary type makes this Other, not Album.
+    {
+      id: "mbrg-3",
+      title: "Collected Test",
+      "first-release-date": "2024-02-01",
+      "primary-type": "Album",
+      "secondary-types": ["Compilation"],
+    },
+    // No date at all, so it can't be ordered and is dropped.
+    { id: "mbrg-4", title: "Undated Test", "primary-type": "Album" },
+  ],
+  "mb-0002": [
+    {
+      id: "mbrg-9",
+      title: "Two Of Us",
+      "first-release-date": "2026-03-03",
+      "primary-type": "EP",
+    },
+  ],
+};
+
 createServer((req, res) => {
   const url = new URL(req.url, SELF);
   const json = (body) => {
@@ -122,6 +164,27 @@ createServer((req, res) => {
 
   match = url.pathname.match(/^\/album\/(\d+)\/tracks$/);
   if (match) return json({ data: TRACKS[match[1]] ?? [] });
+
+  if (url.pathname === "/mb/artist") {
+    const q = (url.searchParams.get("query") ?? "").toLowerCase();
+    return json({ artists: MB_ARTISTS.filter((a) => a.name.toLowerCase().includes(q)) });
+  }
+
+  if (url.pathname === "/mb/release-group") {
+    const artist = url.searchParams.get("artist") ?? "";
+    return json({ "release-groups": MB_RELEASE_GROUPS[artist] ?? [] });
+  }
+
+  // Cover Art Archive stand-in. The real one 404s for most release groups.
+  match = url.pathname.match(/^\/coverart\/release-group\/([^/]+)\/front-250$/);
+  if (match) {
+    if (match[1] !== "mbrg-1") {
+      res.writeHead(404);
+      return res.end();
+    }
+    res.writeHead(200, { "Content-Type": "image/svg+xml" });
+    return res.end(coverSvg(url.pathname));
+  }
 
   json({ error: { message: "not found" } });
 }).listen(PORT, () => {

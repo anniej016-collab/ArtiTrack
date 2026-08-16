@@ -29,6 +29,7 @@ import {
   type SectionKey,
   type ViewMode,
 } from "@/lib/view-mode";
+import { isSyncableSource } from "@/lib/providers";
 import { groupReleases } from "@/lib/grouping";
 import { formatDate } from "@/lib/format";
 
@@ -263,7 +264,7 @@ export default async function Home() {
     total > (viewModes[section] === "list" ? LIST_PREVIEW : PREVIEW_MIN);
 
   const syncableCount = activeArtists.filter(
-    (artist) => artist.source !== "manual" && artist.externalId,
+    (artist) => isSyncableSource(artist.source) && artist.externalId,
   ).length;
   const hasLibrary = activeArtists.length > 0 || pausedArtists.length > 0;
 

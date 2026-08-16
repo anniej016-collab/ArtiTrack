@@ -31,8 +31,20 @@ describe("searchArtists", () => {
 
     const results = await searchArtists("radio");
     expect(results).toEqual([
-      { externalId: "399", name: "Radiohead", imageUrl: "p.jpg", albumCount: 9 },
-      { externalId: "412", name: "No Picture", imageUrl: null, albumCount: null },
+      {
+        source: "deezer",
+        externalId: "399",
+        name: "Radiohead",
+        imageUrl: "p.jpg",
+        albumCount: 9,
+      },
+      {
+        source: "deezer",
+        externalId: "412",
+        name: "No Picture",
+        imageUrl: null,
+        albumCount: null,
+      },
     ]);
   });
 

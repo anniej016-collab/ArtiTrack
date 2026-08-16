@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { songKey } from "@/lib/song-identity";
 import {
-  PROVIDER_KEY,
-  fetchArtistReleases,
-  fetchReleaseTracks,
+  SYNCABLE_SOURCES,
+  TRACK_SOURCES,
+  getProvider,
   type ProviderRelease,
-} from "@/lib/providers/deezer";
+} from "@/lib/providers";
 
 export type SyncResult = {
   added: number;
@@ -85,9 +85,12 @@ export async function syncArtist(artistId: string): Promise<SyncResult | null> {
 
   if (!artist) return null;
   if (artist.status === "PAUSED") return null;
-  if (artist.source !== PROVIDER_KEY || !artist.externalId) return null;
+  if (!artist.externalId) return null;
 
-  const releases = await fetchArtistReleases(artist.externalId);
+  const provider = getProvider(artist.source);
+  if (!provider) return null;
+
+  const releases = await provider.fetchArtistReleases(artist.externalId);
   const result = await persistReleases(artist.id, releases, {
     markListened: false,
   });
@@ -131,7 +134,11 @@ export async function syncAllActive(
   limit: number = SYNC_BATCH_SIZE,
 ): Promise<SyncAllResult> {
   const artists = await prisma.artist.findMany({
-    where: { status: "ACTIVE", source: PROVIDER_KEY, externalId: { not: null } },
+    where: {
+      status: "ACTIVE",
+      source: { in: SYNCABLE_SOURCES },
+      externalId: { not: null },
+    },
     // Nulls first: an artist never checked is the most overdue there is.
     orderBy: { lastSyncedAt: { sort: "asc", nulls: "first" } },
     take: limit,
@@ -161,7 +168,11 @@ export async function syncAllActive(
 /** Active, provider-backed artists still waiting to be checked. */
 export async function countSyncableArtists(): Promise<number> {
   return prisma.artist.count({
-    where: { status: "ACTIVE", source: PROVIDER_KEY, externalId: { not: null } },
+    where: {
+      status: "ACTIVE",
+      source: { in: SYNCABLE_SOURCES },
+      externalId: { not: null },
+    },
   });
 }
 
@@ -177,7 +188,11 @@ export async function syncReleaseTracks(releaseId: string): Promise<number | nul
     select: { id: true, artistId: true, externalId: true, artist: { select: { source: true } } },
   });
 
-  if (!release?.externalId || release.artist.source !== PROVIDER_KEY) return null;
+  if (!release?.externalId) return null;
+
+  // Some sources carry releases but no affordable way to reach a tracklist.
+  const fetchReleaseTracks = getProvider(release.artist.source)?.fetchReleaseTracks;
+  if (!fetchReleaseTracks) return null;
 
   const tracks = await fetchReleaseTracks(release.externalId);
 
@@ -284,7 +299,7 @@ export async function syncArtistTracks(artistId: string): Promise<TrackBatchResu
       artistId,
       externalId: { not: null },
       tracksSyncedAt: null,
-      artist: { source: PROVIDER_KEY },
+      artist: { source: { in: TRACK_SOURCES } },
     },
     orderBy: { releaseDate: "desc" },
     select: { id: true },

@@ -6,7 +6,10 @@ losing their history.
 
 - **Search for an artist** on the home page and add them. Their back catalogue is
   imported automatically from [Deezer](https://www.deezer.com) — no API key or account
-  needed. Artists can still be added and their releases logged by hand.
+  needed. Artists Deezer doesn't carry are looked up in
+  [MusicBrainz](https://musicbrainz.org) instead, which covers independent, regional and
+  older material; it has releases but no artwork or song lists. Artists can still be
+  added and their releases logged by hand.
 - **New releases arrive on their own.** A scheduled job checks nightly, so the queue is
   up to date whenever you open the app. There are still buttons to check on demand. Re-syncing updates existing releases rather than duplicating
   them, and never overwrites what you've marked as listened.
