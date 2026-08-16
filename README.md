@@ -63,9 +63,16 @@ available"*, the database is not reaching that build. The build log lists the na
 the database-related variables it can see, which distinguishes "nothing attached" from
 "attached but scoped to a different environment".
 
-The app has no login, so anyone with the deployment URL can read and edit your data.
-Vercel's **Deployment Protection** settings (Project → Settings → Deployment Protection)
-can restrict access to your own Vercel account.
+## Keeping it private
+
+Anyone with the URL can otherwise read and edit everything. Set **`ARTITRACK_PASSWORD`**
+in the Vercel project's Environment Variables and the whole app sits behind a password
+screen. Leave it unset locally so development and the tests aren't obstructed.
+
+The cookie stores a value derived from the password, never the password itself, so
+changing the password signs every device out. Vercel's own Deployment Protection does
+the same job without any code, but protecting a production URL with it needs a paid
+plan.
 
 ## Running locally
 

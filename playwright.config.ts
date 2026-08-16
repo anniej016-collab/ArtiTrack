@@ -84,7 +84,9 @@ export default defineConfig({
       env: {
         DEEZER_API_BASE: `http://127.0.0.1:${MOCK_PORT}`,
         DATABASE_URL: process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ?? "",
-        // The password gate would otherwise block every test at the door.
+        // The suite runs unlocked. Next refuses to run two dev servers in one
+        // directory, so the gate can't have an instance of its own here; its
+        // rules are covered by unit tests in src/lib/auth.test.ts instead.
         ARTITRACK_PASSWORD: "",
       },
       url: `http://127.0.0.1:${PORT}`,
