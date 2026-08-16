@@ -80,6 +80,23 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Tests
+
+```bash
+npm test        # unit tests (vitest) — grouping, connection-string resolution, provider parsing
+npm run test:e2e  # browser tests (Playwright), desktop and phone
+npm run test:all
+```
+
+The browser tests run the real app against a stand-in provider in `e2e/mock-provider.mjs`,
+so they need no network and are deterministic. They need a Postgres database and
+**truncate every table**, so point `TEST_DATABASE_URL` at a scratch database rather
+than the one holding real data.
+
+`e2e/regressions.spec.ts` is one test per bug that actually shipped. They are all
+browser behaviours — tap targets, responsive rules, state surviving a reload — which is
+where this project's regressions have been; unit tests could not have caught any of them.
+
 ## Stack
 
 - [Next.js](https://nextjs.org) (App Router, Server Actions)

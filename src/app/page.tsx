@@ -268,27 +268,24 @@ export default async function Home() {
         search box, so the sections below start near the fold.
       */}
       <section className={hasLibrary ? "pt-1" : "pt-2"}>
-        {!hasLibrary && (
-          <>
-            <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-              Everything you&apos;re
-              <span className="block bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">
-                listening for.
-              </span>
-            </h1>
-            <p className="mt-3 max-w-md text-sm text-muted">
-              Follow an artist and their releases arrive on their own. Pause anyone
-              you&apos;ve moved on from — their history stays.
-            </p>
-          </>
-        )}
-
         {/*
-          One instance of the search, in a stable position. Rendering it inside
-          two branches of a conditional made React unmount it the moment the
-          first artist landed and hasLibrary flipped, throwing away the results
-          you were still adding from.
+          Hidden rather than unmounted once a library exists, so adding the
+          first artist changes only classes and can't disturb the search below
+          it mid-flow. Covered by e2e/regressions.spec.ts.
         */}
+        <div className={hasLibrary ? "hidden" : ""}>
+          <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+            Everything you&apos;re
+            <span className="block bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">
+              listening for.
+            </span>
+          </h1>
+          <p className="mt-3 max-w-md text-sm text-muted">
+            Follow an artist and their releases arrive on their own. Pause anyone
+            you&apos;ve moved on from — their history stays.
+          </p>
+        </div>
+
         <div
           className={
             hasLibrary

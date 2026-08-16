@@ -18,9 +18,12 @@ const DIRECT_NAMES = [
 
 const POSTGRES_URL_PATTERN = /^postgres(ql)?:\/\//i;
 
+/** Loose on purpose: any bag of variables, including one built in a test. */
+type Env = Record<string, string | undefined>;
+
 /** Names of every env var whose value looks like a Postgres connection string. */
 export function discoverPostgresUrlVars(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Env = process.env,
 ): string[] {
   return Object.keys(env)
     .filter((name) => POSTGRES_URL_PATTERN.test(env[name] ?? ""))
@@ -29,7 +32,7 @@ export function discoverPostgresUrlVars(
 
 function firstMatch(
   names: readonly string[],
-  env: NodeJS.ProcessEnv,
+  env: Env,
 ): string | undefined {
   for (const name of names) {
     const value = env[name];
@@ -40,7 +43,7 @@ function firstMatch(
 
 function suffixMatch(
   suffixes: readonly string[],
-  env: NodeJS.ProcessEnv,
+  env: Env,
 ): string | undefined {
   // Catches custom-prefixed variables such as MYAPP_POSTGRES_URL_NON_POOLING.
   return discoverPostgresUrlVars(env).find((name) =>
@@ -53,7 +56,7 @@ function suffixMatch(
  * matters on serverless hosts that open many short-lived connections.
  */
 export function resolveRuntimeUrlVar(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Env = process.env,
 ): string | undefined {
   return (
     firstMatch(POOLED_NAMES, env) ??
@@ -68,7 +71,7 @@ export function resolveRuntimeUrlVar(
  * connection, which migrations require.
  */
 export function resolveMigrationUrlVar(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Env = process.env,
 ): string | undefined {
   return (
     firstMatch(DIRECT_NAMES, env) ??
@@ -80,14 +83,14 @@ export function resolveMigrationUrlVar(
 }
 
 export function resolveRuntimeUrl(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Env = process.env,
 ): string | undefined {
   const name = resolveRuntimeUrlVar(env);
   return name ? env[name] : undefined;
 }
 
 export function resolveMigrationUrl(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Env = process.env,
 ): string | undefined {
   const name = resolveMigrationUrlVar(env);
   return name ? env[name] : undefined;

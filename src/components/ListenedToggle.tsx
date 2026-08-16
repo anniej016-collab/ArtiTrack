@@ -1,6 +1,18 @@
 import { setReleaseListened } from "@/lib/actions";
 import { CheckIcon, PlusIcon } from "@/components/icons";
 
+/**
+ * Both variants share one accessible name, matching the pill's visible text, so
+ * the control is described the same way whichever shape it takes. The fuller
+ * description of the action lives in the tooltip.
+ */
+function labels(listened: boolean) {
+  return {
+    name: listened ? "Heard" : "Mark heard",
+    title: listened ? "Mark as not heard" : "Mark as heard",
+  };
+}
+
 export function ListenedToggle({
   releaseId,
   listened,
@@ -14,7 +26,7 @@ export function ListenedToggle({
   size?: "sm" | "md";
 }) {
   const action = setReleaseListened.bind(null, releaseId, !listened);
-  const label = listened ? "Mark as not listened" : "Mark as listened";
+  const { name, title } = labels(listened);
 
   if (variant === "overlay") {
     const box = size === "sm" ? "size-7" : "size-8";
@@ -24,9 +36,9 @@ export function ListenedToggle({
       <form action={action}>
         <button
           type="submit"
-          aria-label={label}
+          aria-label={name}
           aria-pressed={listened}
-          title={label}
+          title={title}
           className={`flex ${box} items-center justify-center rounded-full backdrop-blur-md transition ${
             listened
               ? "bg-success text-black shadow-lg shadow-black/30"
@@ -48,7 +60,7 @@ export function ListenedToggle({
       <button
         type="submit"
         aria-pressed={listened}
-        title={label}
+        title={title}
         className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
           listened
             ? "bg-success/15 text-success ring-1 ring-inset ring-success/25 hover:bg-success/25"
@@ -56,7 +68,7 @@ export function ListenedToggle({
         }`}
       >
         {listened ? <CheckIcon className="size-3.5" /> : <PlusIcon className="size-3.5" />}
-        {listened ? "Heard" : "Mark heard"}
+        {name}
       </button>
     </form>
   );
