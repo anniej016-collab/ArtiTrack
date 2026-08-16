@@ -48,6 +48,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 Arti<span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-2">Track</span>
               </span>
             </Link>
+
+            {/* Its own place in the header rather than a section of the home
+                page: the check-out list isn't part of the library. */}
+            <Link
+              href="/check-out"
+              className="ml-auto rounded-full px-3 py-1.5 text-xs font-medium text-faint transition-colors hover:bg-panel-hover hover:text-text"
+            >
+              Check out
+            </Link>
           </div>
         </header>
         <main className="mx-auto w-full max-w-4xl flex-1 px-5 pb-12 pt-8">

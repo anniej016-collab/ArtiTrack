@@ -41,6 +41,7 @@ import {
   type Touched,
 } from "@/lib/listening";
 import { parseTracklist } from "@/lib/tracklist";
+import { parseDiscoveryLines } from "@/lib/discovery";
 import { songKey } from "@/lib/song-identity";
 import type { ReleaseCategory } from "@/lib/release-category";
 
@@ -437,6 +438,69 @@ export async function updateReleaseNotes(releaseId: string, formData: FormData) 
 
   await prisma.release.update({ where: { id: releaseId }, data: { notes } });
   revalidatePath(`/releases/${releaseId}`);
+}
+
+/*
+ * The check-out list: artists and records you don't follow but mean to hear.
+ * Kept apart from the library on purpose — nothing here is a commitment, and
+ * putting it in the To listen queue would drown what's genuinely new from
+ * someone you follow.
+ */
+
+export async function addDiscovery(formData: FormData) {
+  const artistName = String(formData.get("artistName") ?? "").trim();
+  if (!artistName) return;
+
+  await prisma.discovery.create({
+    data: {
+      artistName,
+      title: String(formData.get("title") ?? "").trim() || null,
+      note: String(formData.get("note") ?? "").trim() || null,
+    },
+  });
+
+  revalidatePath("/check-out");
+}
+
+export async function addDiscoveryBatch(formData: FormData) {
+  const parsed = parseDiscoveryLines(String(formData.get("lines") ?? ""));
+  if (parsed.length === 0) return;
+
+  // Skipping duplicates rather than erroring: pasting an updated playlist over
+  // an old one should add what's new and leave the rest alone.
+  const existing = await prisma.discovery.findMany({
+    select: { artistName: true, title: true },
+  });
+  const known = new Set(
+    existing.map((item) => `${item.artistName.toLowerCase()}|${(item.title ?? "").toLowerCase()}`),
+  );
+
+  const fresh = parsed.filter(
+    (item) => !known.has(`${item.artistName.toLowerCase()}|${(item.title ?? "").toLowerCase()}`),
+  );
+  if (fresh.length > 0) await prisma.discovery.createMany({ data: fresh });
+
+  revalidatePath("/check-out");
+}
+
+export async function setDiscoveryHeard(id: string, heard: boolean) {
+  await prisma.discovery.update({
+    where: { id },
+    data: { heard, heardAt: heard ? new Date() : null },
+  });
+
+  revalidatePath("/check-out");
+}
+
+export async function deleteDiscovery(id: string) {
+  await prisma.discovery.delete({ where: { id } });
+  revalidatePath("/check-out");
+}
+
+/** Clears out everything already heard, which is the point of ticking it off. */
+export async function clearHeardDiscoveries() {
+  await prisma.discovery.deleteMany({ where: { heard: true } });
+  revalidatePath("/check-out");
 }
 
 export async function deleteArtist(artistId: string) {

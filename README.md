@@ -59,6 +59,12 @@ losing their history.
   heard is hand-entered and can't be re-fetched from anywhere, so it's worth keeping a
   copy.
 - **Install it to a home screen** — it opens without browser chrome, like an app.
+- **Keep a "Check out" list** for artists and records you don't follow but mean to hear.
+  Reached from the header, and deliberately outside the library: nothing on it counts as
+  following anyone and none of it lands in the To listen queue. Add one at a time, or
+  paste a playlist in as `Artist - Title` lines — repeats are skipped, so an updated list
+  can go straight over the old one. **Follow** on any row hands the name to the tracker's
+  own search.
 
 When you add an artist, **"Heard already" is ticked by default** so their existing
 catalogue does not flood the To listen queue. Releases found by later syncs arrive

@@ -23,10 +23,23 @@ export async function GET() {
     },
   });
 
+  // Hand-entered too, and nowhere else to get it back from.
+  const discoveries = await prisma.discovery.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+
   const body = {
     exportedAt: new Date().toISOString(),
     format: "artitrack-export-v1",
     artistCount: artists.length,
+    checkOut: discoveries.map((item) => ({
+      artistName: item.artistName,
+      title: item.title,
+      note: item.note,
+      heard: item.heard,
+      heardAt: item.heardAt,
+      addedAt: item.createdAt,
+    })),
     artists: artists.map((artist) => ({
       name: artist.name,
       status: artist.status,

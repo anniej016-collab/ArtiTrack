@@ -74,7 +74,12 @@ function ImportButton({
   );
 }
 
-export function ArtistSearch() {
+export function ArtistSearch({
+  /** Filled in when arriving from the check-out list, ready to search. */
+  initialQuery = "",
+}: {
+  initialQuery?: string;
+}) {
   const [state, action, pending] = useActionState(searchArtistsAction, emptySearch);
   /*
    * The search is a means to an end: once the artist you were after is added,
@@ -83,7 +88,7 @@ export function ArtistSearch() {
    * and says so instead.
    */
   const [added, setAdded] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
 
   const finished = added !== null;
 

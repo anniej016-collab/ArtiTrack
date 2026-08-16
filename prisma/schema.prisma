@@ -107,6 +107,36 @@ model Track {
   @@index([songId])
 }
 
+/// Something to check out that isn't part of the tracker.
+///
+/// Deliberately separate from Artist and Release: these are people you don't
+/// follow and records you may never keep. Mixing them into the library would
+/// put things you haven't decided about into a queue that means "new from
+/// someone I follow".
+model Discovery {
+  id String @id @default(cuid())
+
+  artistName String
+  /// The song or record to hear. Null means the artist themselves is the lead.
+  title      String?
+  note       String?
+
+  heard   Boolean   @default(false)
+  heardAt DateTime?
+
+  /// Where it came from: "manual", or a playlist source such as "spotify".
+  source String @default("manual")
+  /// The source's own id, so re-reading a playlist updates instead of duplicating.
+  externalId String?
+  /// A link back to wherever it was found.
+  url String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([source, externalId])
+  @@index([heard])
+}
+
 /// A song, independent of which releases carry it. Marking it heard counts
 /// everywhere it appears: the single, the album, the deluxe, the remaster.
 model Song {

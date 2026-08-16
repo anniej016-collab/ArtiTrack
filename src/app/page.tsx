@@ -189,7 +189,11 @@ function ArtistGroup({
   );
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: PageProps<"/">) {
+  // Arriving from the check-out list carries the artist's name for the search.
+  const prefill = (await searchParams)?.q;
+  const initialQuery = typeof prefill === "string" ? prefill : "";
+
   const artistSelect = {
     id: true,
     name: true,
@@ -316,7 +320,7 @@ export default async function Home() {
               : "mt-6 rounded-2xl border border-line bg-gradient-to-b from-white/6 to-transparent p-4"
           }
         >
-          <ArtistSearch />
+          <ArtistSearch initialQuery={initialQuery} />
           <details className={hasLibrary ? "group mt-2.5" : "group mt-3"}>
             <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-faint transition-colors hover:text-muted">
               <span className="transition-transform group-open:rotate-90">›</span>

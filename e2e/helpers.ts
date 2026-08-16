@@ -13,7 +13,7 @@ export async function resetDatabase() {
   const client = new Client({ connectionString });
   await client.connect();
   try {
-    await client.query('TRUNCATE "Track", "Release", "Artist" CASCADE');
+    await client.query('TRUNCATE "Track", "Release", "Artist", "Discovery" CASCADE');
   } finally {
     await client.end();
   }
