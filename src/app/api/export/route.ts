@@ -60,6 +60,7 @@ export async function GET() {
         releaseDate: release.releaseDate,
         listened: release.listened,
         listenedAt: release.listenedAt,
+        setAside: release.setAside,
         rating: release.rating,
         notes: release.notes,
         externalId: release.externalId,

@@ -25,6 +25,11 @@ losing their history.
   completes the release. Because a song belongs to the artist rather than to one
   record, that reaches sideways too: hearing the deluxe edition completes the
   standard album it shares its songs with.
+- **Set aside anything you've no plans to play.** A third state, because the other two
+  both say the wrong thing about a record you've decided to skip: leaving it unheard
+  keeps it in the queue for good, and marking it heard is untrue. It drops out of the
+  queue into its own **Set aside** section, where you can put it back or tick it off if
+  you get to it after all. Nothing about it is permanent, and the songs are untouched.
 - **Group the To listen queue** by artist or by release month, so it's clear whose
   backlog is stacking up. Month headings carry the year only when the queue spans more
   than one.

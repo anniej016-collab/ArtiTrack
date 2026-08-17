@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ListenedToggle } from "@/components/ListenedToggle";
+import { SetAsideToggle } from "@/components/SetAsideToggle";
 import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
 import { TrackList } from "@/components/TrackList";
 import { LoadReleaseTracksButton } from "@/components/LoadTracksButton";
@@ -96,6 +97,13 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <ListenedToggle releaseId={release.id} listened={release.listened} />
+            {!release.listened && (
+              <SetAsideToggle
+                releaseId={release.id}
+                title={release.title}
+                setAside={release.setAside}
+              />
+            )}
             {canLoadTracks && release.tracks.length > 0 && (
               <LoadReleaseTracksButton releaseId={release.id} />
             )}

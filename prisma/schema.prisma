@@ -74,6 +74,15 @@ model Release {
   listened   Boolean   @default(false)
   listenedAt DateTime?
 
+  /// Deliberately not planned for, without claiming to have heard it.
+  ///
+  /// A third state is needed because the other two both say the wrong thing
+  /// about a record you have decided to skip: leaving it unheard keeps it in
+  /// the queue forever, and marking it heard is simply untrue. Reversible by
+  /// design — a decision not to listen now is not a decision for good.
+  setAside   Boolean   @default(false)
+  setAsideAt DateTime?
+
   // Provider id, so re-syncing updates a release instead of duplicating it.
   // Null for releases entered by hand.
   externalId String?
@@ -97,6 +106,7 @@ model Release {
   @@index([artistId])
   @@index([releaseDate])
   @@index([listened])
+  @@index([setAside])
 }
 
 /// One track as it appears on one release. The same song may have several.

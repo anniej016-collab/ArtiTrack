@@ -239,6 +239,26 @@ function revalidateTouched({ artistId, releaseIds }: Touched) {
   for (const id of releaseIds) revalidatePath(`/releases/${id}`);
 }
 
+/**
+ * Takes a release out of the queue without claiming to have heard it.
+ *
+ * The two states the tracker had both misrepresent a record you've decided to
+ * skip: unheard leaves it in the queue for good, heard is untrue. This is
+ * always reversible — the songs and everything else are untouched, so putting
+ * it back leaves no trace of having set it aside.
+ */
+export async function setReleaseAside(releaseId: string, aside: boolean) {
+  const release = await prisma.release.update({
+    where: { id: releaseId },
+    data: { setAside: aside, setAsideAt: aside ? new Date() : null },
+    select: { artistId: true },
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/artists/${release.artistId}`);
+  revalidatePath(`/releases/${releaseId}`);
+}
+
 export async function setReleaseListened(releaseId: string, listened: boolean) {
   revalidateTouched(await setReleaseListenedDeep(releaseId, listened));
 }

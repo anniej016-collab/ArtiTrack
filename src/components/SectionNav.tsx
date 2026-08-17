@@ -1,5 +1,6 @@
 const LINKS = [
   { id: "to-listen", label: "To listen" },
+  { id: "set-aside", label: "Set aside" },
   { id: "recently-listened", label: "Recent" },
   { id: "following", label: "Following" },
   { id: "paused", label: "Paused" },

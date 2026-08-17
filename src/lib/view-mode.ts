@@ -6,6 +6,7 @@ export type ViewMode = "cards" | "list";
 
 export const SECTION_KEYS = [
   "to-listen",
+  "set-aside",
   "recently-listened",
   "following",
   "paused",

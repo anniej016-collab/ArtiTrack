@@ -13,6 +13,7 @@ describe("view mode cookie", () => {
   it("defaults every section to cards", () => {
     expect(parseViewModes(undefined)).toEqual({
       "to-listen": "cards",
+      "set-aside": "cards",
       "recently-listened": "cards",
       following: "cards",
       paused: "cards",

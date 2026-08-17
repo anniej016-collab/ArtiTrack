@@ -5,6 +5,7 @@ import { ArtistSearch } from "@/components/ArtistSearch";
 import { SyncAllButton } from "@/components/SyncButtons";
 import { StatusToggleButton } from "@/components/StatusToggleButton";
 import { ListenedToggle } from "@/components/ListenedToggle";
+import { SetAsideToggle } from "@/components/SetAsideToggle";
 import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
 import { ReleaseCard, type ReleaseCardData } from "@/components/ReleaseCard";
 import { ArtistCard, type ArtistCardData } from "@/components/ArtistCard";
@@ -90,7 +91,14 @@ function ReleaseRow({
           {formatDate(release.releaseDate)}
         </p>
       </div>
-      <div className="relative z-10">
+      <div className="relative z-10 flex items-center gap-2">
+        {!release.listened && (
+          <SetAsideToggle
+            releaseId={release.id}
+            title={release.title}
+            setAside={release.setAside}
+          />
+        )}
         <ListenedToggle releaseId={release.id} listened={release.listened} />
       </div>
     </li>
@@ -211,6 +219,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const hiddenCategories = await getHiddenCategories();
   const queueWhere = {
     listened: false,
+    // Set aside is a third answer to "am I going to play this": out of the
+    // queue, but not claiming to have been heard.
+    setAside: false,
     artist: { status: "ACTIVE" as const },
   };
 
@@ -223,6 +234,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     queueCandidates,
     toListenTotal,
     recentlyListened,
+    setAsideReleases,
     heardCount,
   ] = await Promise.all([
       getViewModes(),
@@ -258,6 +270,13 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         take: 8,
         include: { artist: { select: { name: true } } },
       }),
+      // Most recently set aside first, so a decision can be walked back while
+      // it's still fresh in mind.
+      prisma.release.findMany({
+        where: { setAside: true, artist: { status: "ACTIVE" } },
+        orderBy: [{ setAsideAt: "desc" }, { releaseDate: "desc" }],
+        include: { artist: { select: { name: true } } },
+      }),
       prisma.release.count({ where: { listened: true } }),
     ]);
 
@@ -288,6 +307,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
 
   const sections = [
     "to-listen",
+    ...(setAsideReleases.length > 0 ? ["set-aside"] : []),
     ...(recentlyListened.length > 0 ? ["recently-listened"] : []),
     ...(activeArtists.length > 0 ? ["following"] : []),
     ...(pausedArtists.length > 0 ? ["paused"] : []),
@@ -352,6 +372,12 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                 {activeArtists.length} following
                 <span className="mx-1 opacity-40">·</span>
                 {toListenTotal} to listen
+                {setAsideReleases.length > 0 && (
+                  <>
+                    <span className="mx-1 opacity-40">·</span>
+                    {setAsideReleases.length} set aside
+                  </>
+                )}
                 <span className="mx-1 opacity-40">·</span>
                 {heardCount} heard
               </p>
@@ -457,6 +483,34 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           </>
         )}
       </CollapsibleSection>
+
+      {/* Only when there is something in it. A decision to skip a record should
+          leave the page alone until it's made. */}
+      {setAsideReleases.length > 0 && (
+        <CollapsibleSection
+          section="set-aside"
+          id="set-aside"
+          title="Set aside"
+          count={setAsideReleases.length}
+          state={sectionStates["set-aside"]}
+          canShowAll={canShowAll("set-aside", setAsideReleases.length)}
+          note={
+            <p className="mb-3 text-xs text-faint">
+              Out of the queue without being marked heard. Put any of them back, or
+              tick one off if you get to it after all.
+            </p>
+          }
+          controls={
+            <ViewToggle section="set-aside" current={viewModes["set-aside"]} />
+          }
+        >
+          <ReleaseGroup
+            releases={setAsideReleases}
+            mode={viewModes["set-aside"]}
+            clamp={sectionStates["set-aside"] === "preview"}
+          />
+        </CollapsibleSection>
+      )}
 
       {recentlyListened.length > 0 && (
         <CollapsibleSection

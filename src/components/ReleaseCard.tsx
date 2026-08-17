@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ListenedToggle } from "@/components/ListenedToggle";
+import { SetAsideToggle } from "@/components/SetAsideToggle";
 import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
 import { CoverPlaceholder } from "@/components/icons";
 import { formatDate } from "@/lib/format";
@@ -13,6 +14,7 @@ export type ReleaseCardData = {
   coverUrl: string | null;
   listened: boolean;
   listenedAt: Date | null;
+  setAside: boolean;
   artistId: string;
   artist?: { name: string };
 };
@@ -63,6 +65,22 @@ export function ReleaseCard({
             size={compact ? "sm" : "md"}
           />
         </div>
+
+        {/* Opposite corner from the tick: two different decisions, so they
+            shouldn't be neighbours you can hit by mistake. Hidden once heard,
+            when there is nothing left to decide. */}
+        {!release.listened && (
+          <div
+            className={`absolute z-10 ${compact ? "left-1.5 top-1.5" : "left-2 top-2"}`}
+          >
+            <SetAsideToggle
+              releaseId={release.id}
+              title={release.title}
+              setAside={release.setAside}
+              variant="overlay"
+            />
+          </div>
+        )}
       </div>
 
       <div className="min-w-0">

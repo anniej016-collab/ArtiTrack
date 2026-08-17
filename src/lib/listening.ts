@@ -123,6 +123,9 @@ export async function setReleaseListenedDeep(
       // Marking something now is a real, dated event, unlike an imported back
       // catalogue. Un-marking clears the date along with the flag.
       listenedAt: listened ? (release.listenedAt ?? new Date()) : null,
+      // Hearing something settles the question it was set aside from, so the
+      // decision not to play it is spent.
+      ...(listened ? { setAside: false, setAsideAt: null } : {}),
     },
   });
 

@@ -68,3 +68,27 @@ export function PlusIcon({ className = "" }: { className?: string }) {
     </svg>
   );
 }
+
+/** Set aside: taken out of the queue, not ticked off. */
+export function MinusIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className={className}>
+      <path d="M4.5 10h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Put back: undo a decision, rather than complete one. */
+export function UndoIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M4 9.5h8a3.5 3.5 0 0 1 0 7H8M4 9.5 7.5 6M4 9.5 7.5 13"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
