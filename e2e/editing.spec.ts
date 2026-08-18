@@ -53,9 +53,14 @@ test("a release can be rated, and the same star clears it", async ({ page }) => 
   await page.getByRole("button", { name: "Rate 4 out of 5" }).click();
   await expect(page.getByText("4/5")).toBeVisible();
 
-  // Pressing the current rating again removes it.
-  await page.getByRole("button", { name: "Clear rating" }).click();
+  // Half steps: the left half of a star, which is a separate target.
+  await page.getByRole("button", { name: "Rate 3.5 out of 5" }).click();
+  await expect(page.getByText("3.5/5")).toBeVisible();
   await expect(page.getByText("4/5")).toHaveCount(0);
+
+  // Pressing the current rating again removes it.
+  await page.getByRole("button", { name: "Clear the rating" }).click();
+  await expect(page.getByText("3.5/5")).toHaveCount(0);
 });
 
 test("a single release can be deleted without touching the artist", async ({ page }) => {

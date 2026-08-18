@@ -48,6 +48,7 @@ import { matchDiscovery } from "@/lib/discovery-match";
 import { loadLibraryIndex } from "@/lib/library-index";
 import { songKey } from "@/lib/song-identity";
 import { MAX_FAVOURITE_SONGS } from "@/lib/favourites";
+import { isValidRating } from "@/lib/rating";
 import type { ReleaseCategory } from "@/lib/release-category";
 
 export async function createArtist(formData: FormData) {
@@ -541,8 +542,15 @@ export async function setTrackFavourite(trackId: string, favourite: boolean) {
   revalidatePath(`/artists/${track.release.artistId}`);
 }
 
-/** Sends the same rating twice to clear it, so one control both sets and unsets. */
+/**
+ * Sends the same rating twice to clear it, so one control both sets and unsets.
+ *
+ * The value is in half-stars, 1 to 10. Checked rather than trusted: it arrives
+ * from a form, and a rating of 40 would sort above everything for good.
+ */
 export async function setReleaseRating(releaseId: string, rating: number) {
+  if (!isValidRating(rating)) return;
+
   const current = await prisma.release.findUnique({
     where: { id: releaseId },
     select: { rating: true, artistId: true },

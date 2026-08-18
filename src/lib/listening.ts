@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { listenedAtOnMarking } from "@/lib/listen-dates";
 
 /**
  * Keeps "heard the release" and "heard its songs" agreeing with each other.
@@ -69,6 +70,7 @@ async function deriveReleasesFromSongs(
       id: true,
       listened: true,
       listenedAt: true,
+      unheardAt: true,
       tracks: { select: { song: { select: { listened: true } } } },
     },
   });
@@ -86,10 +88,12 @@ async function deriveReleasesFromSongs(
       where: { id: release.id },
       data: {
         listened: complete,
-        // An existing date is kept: it records when it was first heard, and
-        // completing the last song doesn't rewrite that history. Falling below
-        // complete keeps it too — see setReleaseListenedDeep.
-        listenedAt: complete ? (release.listenedAt ?? new Date()) : release.listenedAt,
+        // Same rule as ticking the release itself: finishing the last song
+        // shortly after un-ticking is that un-tick being undone, not a listen.
+        listenedAt: complete
+          ? listenedAtOnMarking(release, new Date())
+          : release.listenedAt,
+        unheardAt: complete ? null : new Date(),
       },
     });
   }
@@ -112,6 +116,7 @@ export async function setReleaseListenedDeep(
       id: true,
       artistId: true,
       listenedAt: true,
+      unheardAt: true,
       tracks: { select: { songId: true } },
     },
   });
@@ -122,17 +127,20 @@ export async function setReleaseListenedDeep(
     data: {
       listened,
       /*
-       * Marking something now is a real, dated event, unlike an imported back
-       * catalogue.
+       * Un-marking keeps the date and records the moment, so a re-tick can tell
+       * which of two very different things it is.
        *
-       * Un-marking keeps the date rather than clearing it. Clearing it meant an
-       * accidental un-tick destroyed the only record of when you heard
-       * something, and re-ticking then stamped today — so a record from years
-       * ago reappeared under "Recently listened" as though it had just been
-       * played. The date is what happened; the flag is what you say about it.
-       * Only the flag is yours to toggle.
+       * Re-ticking straight after un-ticking is a mistap being corrected, and
+       * puts back exactly what was there — including no date at all, which is
+       * how an imported back catalogue is stored. Re-ticking much later is a
+       * real listen and gets today. Guessing between them was the bug: with no
+       * date to restore, every correction invented one and dropped a decade-old
+       * record into "Recently listened".
        */
-      listenedAt: listened ? (release.listenedAt ?? new Date()) : release.listenedAt,
+      listenedAt: listened
+        ? listenedAtOnMarking(release, new Date())
+        : release.listenedAt,
+      unheardAt: listened ? null : new Date(),
       // Hearing something settles the question it was set aside from, so the
       // decision not to play it is spent.
       ...(listened ? { setAside: false, setAsideAt: null } : {}),

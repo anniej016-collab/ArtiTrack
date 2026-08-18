@@ -67,8 +67,9 @@ losing their history.
   *Best rated* alongside *Newest* — unrated records sit at the end rather than at the
   bottom of the scale, because no opinion is not nought out of five. Ratings show as
   pips under the title in that view only, where they are what you are reading.
-- **Edit or delete a single release**, rate it out of five, and keep notes on it or on
-  the artist. Notes sit at the top of the page they belong to, not behind an edit form.
+- **Edit or delete a single release**, rate it out of five in half-stars, and keep notes
+  on it or on the artist. The left half of a star sets the half step and the right half
+  the whole one; pressing whichever step is already the rating clears it. Notes sit at the top of the page they belong to, not behind an edit form.
   Deleting one release leaves the artist and everything else intact.
 - **Fill in anything a catalogue doesn't supply.** Artist photos and cover art are taken
   as links (right-click an image on the web and copy its address), names can be edited,
@@ -136,11 +137,17 @@ catalogue is marked listened with **no date**, because the date of the import sa
 nothing about when the music was actually heard. Only pressing the button records a
 date, so "Recently listened" shows genuine recent listens rather than an import.
 
-Un-ticking something keeps the date. The flag is what you say about a record; the date
-is what happened, and un-ticking says you were wrong about having heard it, not that
-the day it was heard on never existed. So re-ticking after an accidental un-tick puts
-the original date back rather than stamping today — which used to drop a record from
-years ago into "Recently listened" as though it had just been played.
+Un-ticking something keeps the date, and records the moment it was un-ticked. The flag
+is what you say about a record; the date is what happened, and un-ticking says you were
+wrong about having heard it, not that the day it was heard on never existed.
+
+Re-ticking within the hour is read as undoing a mistap, and puts back exactly what was
+there — **including no date at all**, which is how an imported back catalogue is stored.
+Re-ticking later is a real listen and takes today's date. Timing is what separates them:
+a mistap is noticed within seconds, while deciding you never really heard a record,
+playing it, and ticking it off again takes longer than any mistake does. Keeping only
+the date was not enough on its own, because the records it went wrong on were exactly
+the ones that never had one.
 
 ## How it looks
 
@@ -254,6 +261,12 @@ where this project's regressions have been; unit tests could not have caught any
   identifies a *recording*, and a remaster is a different recording — which is exactly
   the case that needs folding. The cost is that two different songs sharing a name
   ("Intro" on three albums) fold together.
+- `Release.rating` is in half-stars: a whole number from 1 to 10, where 7 is three and a
+  half. Stored doubled rather than as a decimal, because the scale has exactly ten
+  positions and an integer cannot land between two of them.
+- `Release.unheardAt` records when something was last un-ticked, which is what lets a
+  re-tick be read as an undo rather than a listen. `src/lib/listen-dates.ts` holds that
+  rule on its own so it can be tested without a database.
 - `Release.favourite` and `Track.favourite` are shortlists, not ratings. The release one
   is unlimited and drives the row at the top of the artist page; the track one is capped
   at three per release, enforced in `setTrackFavourite` as well as in the UI.

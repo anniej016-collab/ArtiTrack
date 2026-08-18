@@ -4,6 +4,7 @@ import { SetAsideToggle } from "@/components/SetAsideToggle";
 import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
 import { CoverPlaceholder, HeartIcon } from "@/components/icons";
 import { formatDate } from "@/lib/format";
+import { STAR_COUNT, formatRating } from "@/lib/rating";
 
 export type ReleaseCardData = {
   id: string;
@@ -26,17 +27,23 @@ export type ReleaseCardData = {
  *
  * At this size five outlined stars turn to mush, and the row has to sit under a
  * title without competing with it. Only filled pips are drawn — the empty half
- * of the scale is the part nobody reads.
+ * of the scale is the part nobody reads. A half-star is a half-width pip, which
+ * is legible at 6px in a way that half a star outline is not.
  */
 function RatingPips({ rating }: { rating: number }) {
+  const whole = Math.floor(rating / 2);
+  const half = rating % 2 === 1;
+  const label = `${formatRating(rating)} out of ${STAR_COUNT}`;
+
   return (
-    <p className="mt-1 flex items-center gap-1" title={`${rating} out of 5`}>
-      <span className="flex gap-[3px]" aria-hidden="true">
-        {Array.from({ length: rating }, (_, index) => (
+    <p className="mt-1 flex items-center gap-1" title={label}>
+      <span className="flex items-center gap-[3px]" aria-hidden="true">
+        {Array.from({ length: whole }, (_, index) => (
           <span key={index} className="size-1.5 rounded-full bg-accent" />
         ))}
+        {half && <span className="h-1.5 w-[3px] rounded-full bg-accent" />}
       </span>
-      <span className="sr-only">Rated {rating} out of 5</span>
+      <span className="sr-only">Rated {label}</span>
     </p>
   );
 }

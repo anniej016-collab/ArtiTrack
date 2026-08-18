@@ -66,7 +66,10 @@ model Release {
   type        ReleaseType @default(OTHER)
   releaseDate DateTime
   notes       String?
-  /// 1–5, or null for unrated.
+  /// Half-stars, so 1–10 where 7 means three and a half. Null for unrated.
+  ///
+  /// Stored doubled rather than as a decimal: the scale has exactly ten steps,
+  /// and an integer cannot land between two of them the way a float can.
   rating      Int?
   /// Picked out as a favourite. Deliberately not the same as a five-star
   /// rating: a rating is a judgement of the record, a favourite is a shortlist,
@@ -80,6 +83,17 @@ model Release {
   // nothing about when it was actually heard.
   listened   Boolean   @default(false)
   listenedAt DateTime?
+
+  /// When it was last un-ticked, so an immediate re-tick can be read as undoing
+  /// a mistap rather than as a fresh listen.
+  ///
+  /// Timing is what separates the two: an accidental un-tick is noticed within
+  /// seconds, while genuinely deciding you had not heard something, playing it,
+  /// and ticking it off again takes longer than any mistake does. Without this
+  /// the app had to guess, and it guessed wrong on an imported back catalogue —
+  /// heard but undated, so re-ticking invented today's date and dropped a
+  /// decade-old record into "Recently listened".
+  unheardAt DateTime?
 
   /// Deliberately not planned for, without claiming to have heard it.
   ///

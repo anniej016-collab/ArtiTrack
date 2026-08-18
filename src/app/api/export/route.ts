@@ -61,7 +61,10 @@ export async function GET() {
         listened: release.listened,
         listenedAt: release.listenedAt,
         setAside: release.setAside,
-        rating: release.rating,
+        // Out of five, halves included — the scale as it reads on screen. The
+        // doubled integer behind it is a storage detail and would be read as a
+        // rating out of ten by anyone opening this file.
+        rating: release.rating === null ? null : release.rating / 2,
         notes: release.notes,
         externalId: release.externalId,
         tracks: release.tracks.map((track) => ({

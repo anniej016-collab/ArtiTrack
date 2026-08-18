@@ -245,3 +245,71 @@ test("an un-ticked release drops out of Recently listened", async ({
   await page.goto("/");
   await expect(page.locator("#recently-listened li")).toHaveCount(0);
 });
+
+test("undoing a mistap on an imported record doesn't invent a listen", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "not device-specific");
+
+  /*
+   * Shipped half-fixed, which was worse than obvious.
+   *
+   * Keeping the date across an un-tick only helps a release that had one. An
+   * imported back catalogue is marked heard with *no* date on purpose — the
+   * import day says nothing about when the music was heard — so a mistap had no
+   * date to restore and re-ticking invented today's, putting a decade-old
+   * record at the top of "Recently listened". Which is the complaint the first
+   * fix was supposed to answer.
+   */
+  await addArtist(page, "Testhead", { heardAlready: true });
+
+  await page.goto("/");
+  await expect(page.locator("#recently-listened li")).toHaveCount(0);
+
+  await openArtist(page, "Testhead");
+  await openReleasesTab(page);
+  await openRelease(page, "In Testing");
+
+  await page.getByRole("button", { name: "Heard", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Mark heard", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Mark heard", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Heard", exact: true })).toBeVisible();
+
+  // Undone, not listened to: it goes back to heard-with-no-date.
+  await page.goto("/");
+  await expect(page.locator("#recently-listened li")).toHaveCount(0);
+});
+
+test("a real listen after a deliberate un-tick still counts", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "not device-specific");
+
+  /*
+   * The other side of the same rule, and the reason it is timed rather than
+   * absolute: deciding you never really heard something, playing it, and
+   * ticking it off is a genuine listen and has to be dated. Only the window
+   * separates it from the mistap above.
+   */
+  await addArtist(page, "Testhead", { heardAlready: true });
+
+  await openArtist(page, "Testhead");
+  await openReleasesTab(page);
+  await openRelease(page, "In Testing");
+
+  await page.getByRole("button", { name: "Heard", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Mark heard", exact: true })).toBeVisible();
+
+  // Age the un-tick past the window, which is the one thing a test can't wait for.
+  await runSql(
+    `UPDATE "Release" SET "unheardAt" = now() - interval '3 hours' WHERE "unheardAt" IS NOT NULL`,
+  );
+
+  await page.reload();
+  await page.getByRole("button", { name: "Mark heard", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Heard", exact: true })).toBeVisible();
+
+  await page.goto("/");
+  await expect(page.locator("#recently-listened li")).toHaveCount(1);
+});
