@@ -54,6 +54,15 @@ export default defineConfig({
    * in well under a second on its own can take many times that with the rest
    * of the suite queued behind it, and a tight limit turns that into a failure
    * that says nothing about the app.
+   *
+   * Left at 30s deliberately. Past a hundred tests the development server
+   * degrades over a long run: three full runs each failed one test on a
+   * timeout, a different test each time, never on an assertion about
+   * behaviour, and every one of them passed alone in a few seconds. Raising
+   * the limit to 45s did not help — the run that failed at 180s had spent
+   * three minutes waiting for a page that renders in two. A bigger number
+   * buys nothing here and hides genuine hangs; the fix is to test against a
+   * production build instead of a development server.
    */
   timeout: 120_000,
   expect: { timeout: 30_000 },

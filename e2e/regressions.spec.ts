@@ -179,6 +179,12 @@ test("re-ticking a release you un-ticked by accident doesn't call it a new liste
     .getByRole("button", { name: /Mark heard|Heard/ })
     .click();
 
+  // Wait for the mark to be committed before reaching past the app to change
+  // it. Under a loaded dev server the action can still be in flight here, and
+  // then the backdate below matches no rows and the test fails describing a
+  // bug that isn't there.
+  await expect(page.locator("#recently-listened li")).toHaveCount(1);
+
   // Backdate it: the only button available stamps today, and the bug is about
   // what happens to a date from long ago.
   await runSql(

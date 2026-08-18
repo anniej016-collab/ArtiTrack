@@ -95,3 +95,38 @@ export function resolveMigrationUrl(
   const name = resolveMigrationUrlVar(env);
   return name ? env[name] : undefined;
 }
+
+/**
+ * The identifying part of a connection string, with the credentials removed.
+ *
+ * Enough to tell two databases apart and to recognise two names for the same
+ * one, without ever handing back the password. A pooled endpoint and a direct
+ * endpoint of the same database differ only by a `-pooler` suffix on the host,
+ * so that is stripped for the comparison but kept for display — otherwise two
+ * names for one database read as two databases.
+ */
+export type PostgresTarget = {
+  /** Host as written, pooler suffix and all. */
+  host: string;
+  /** Database name, without the leading slash. */
+  database: string;
+  /** Equal for two variables that point at the same database. */
+  identity: string;
+};
+
+export function describePostgresUrl(value: string): PostgresTarget | null {
+  if (!POSTGRES_URL_PATTERN.test(value)) return null;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+
+  const host = parsed.host;
+  const database = parsed.pathname.replace(/^\//, "");
+  const direct = host.replace(/-pooler(?=\.|:|$)/, "");
+
+  return { host, database, identity: `${direct}/${database}` };
+}

@@ -79,6 +79,12 @@ losing their history.
   of "Following", and their releases leave the To listen queue — but their full release
   history, including what you'd already marked as listened, stays on their page.
 - **Resume** a paused artist any time.
+- **See which database it is actually using.** A *Database* link in the footer names
+  every database setting the app can see, says which one it reads and which one
+  schema updates go to, and reports how much is in each — so "is this the right
+  database?" is answered by the app rather than by reading a hosting dashboard.
+  It exists because of an outage where the answer mattered and nothing could say it.
+  Passwords are never shown.
 - **Download your data** as JSON from the link at the bottom of any page. What you've
   heard is hand-entered and can't be re-fetched from anywhere, so it's worth keeping a
   copy.
@@ -146,6 +152,12 @@ uppercase labels they were indistinguishable from the small print inside them. T
 header is a two-item nav, Library and Check out, with the current one filled in.
 
 ## Deploying to Vercel
+
+The build command is pinned in `vercel.json` to `npm run build`, and that is
+load-bearing: `prisma migrate deploy` lives in that script, so a Build Command
+set in the Vercel dashboard replaces it silently and ships an app whose schema
+change never happened. Every page then fails on a column that does not exist.
+
 
 1. Push this branch to GitHub (already done).
 2. Go to [vercel.com/new](https://vercel.com/new) and import the `ArtiTrack` repository.

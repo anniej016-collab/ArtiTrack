@@ -74,6 +74,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             >
               Import a discography
             </Link>
+            <Link
+              href="/database"
+              className="text-xs text-faint transition-colors hover:text-muted"
+            >
+              Database
+            </Link>
             <InstallButton />
           </div>
         </footer>
