@@ -6,6 +6,15 @@ import type { SectionKey, SectionState } from "@/lib/view-mode";
 export const PREVIEW_MIN = 6;
 /** How many rows a list-mode preview shows. */
 export const LIST_PREVIEW = 6;
+/**
+ * The most a card preview can ever show: two rows at the widest breakpoint.
+ *
+ * `.clamp-rows` trims further at narrower ones, so this is the point past which
+ * nothing is visible on any screen — and therefore the point past which sending
+ * a card is sending it to be hidden. On a large library that was the difference
+ * between a dozen cards and two hundred.
+ */
+export const CARD_PREVIEW = 12;
 /** Below this many artists, scrolling is quicker than typing a filter. */
 export const FILTER_MIN = 5;
 

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addArtist, resetDatabase, resetPreferences } from "./helpers";
+import { addArtist, resetDatabase, resetPreferences, runSql } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await resetDatabase();
@@ -116,4 +116,38 @@ test("paused artists are ordered by name too", async ({ page }) => {
   await page.goto("/");
   const names = await page.locator("#paused li a[href^='/artists/']").allTextContents();
   expect(names.map((name) => name.trim())).toEqual(["Test Moscow", "Testhead"]);
+});
+
+test("a preview sends only the cards a preview can show", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "not device-specific");
+
+  /*
+   * The two-row preview was done purely in CSS, so a queue of two hundred
+   * records rendered two hundred cards and hid a hundred and eighty-eight of
+   * them. On the real library that was over a megabyte of HTML per page load,
+   * nearly all of it display:none. "Show all" is a server action either way, so
+   * sending the rest bought nothing at all.
+   */
+  await addArtist(page, "Testhead", { heardAlready: false });
+
+  await runSql(`
+    INSERT INTO "Release" (id, "artistId", title, type, "releaseDate", listened, "setAside", "createdAt")
+    SELECT 'bulk' || g, a.id, 'Bulk ' || g, 'ALBUM', now(), false, false, now()
+    FROM generate_series(1, 40) g, (SELECT id FROM "Artist" LIMIT 1) a
+  `);
+
+  await page.goto("/");
+
+  // What the browser can see is unchanged: still two rows.
+  const visible = page.locator("#to-listen li:visible");
+  await expect(visible).toHaveCount(12);
+
+  // And what the server sent is no more than that.
+  await expect(page.locator("#to-listen li")).toHaveCount(12);
+
+  // Expanding is what fetches the rest.
+  await page.getByRole("button", { name: /^Show all/ }).first().click();
+  await expect
+    .poll(async () => page.locator("#to-listen li").count())
+    .toBeGreaterThan(12);
 });

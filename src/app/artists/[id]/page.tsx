@@ -31,28 +31,49 @@ export default async function ArtistPage({
   // how you are reading this artist right now, not a setting for the whole app.
   const sort = query?.sort === "rating" ? "rating" : "date";
 
-  const artist = await prisma.artist.findUnique({
-    where: { id },
-    include: {
-      releases: {
-        orderBy: { releaseDate: "desc" },
-        include: {
-          tracks: {
-            orderBy: { position: "asc" },
-            include: {
-              song: {
-                select: {
-                  id: true,
-                  listened: true,
-                  _count: { select: { tracks: true } },
+  /*
+   * Tracks are fetched only for the tab that shows them.
+   *
+   * Both tabs used to load every track of every release, because the Releases
+   * tab needed two numbers off the back of them — the song count in the tab
+   * label, and how many of those songs are heard. For a large discography that
+   * is a thousand track rows, each carrying its song and a count of that song's
+   * other appearances, fetched and hydrated and thrown away to print
+   * "Songs · 966". Two counting queries answer the same question without
+   * reading a row, and the Releases tab now touches no track at all.
+   */
+  const [artist, songCount, heardSongCount, releasesWithSongs] = await Promise.all([
+    prisma.artist.findUnique({
+      where: { id },
+      include: { releases: { orderBy: { releaseDate: "desc" } } },
+    }),
+    // Songs rather than tracks: the same song on an album and a compilation is
+    // one thing to listen to, not two. Songs whose last track has gone are
+    // cleared away as tracklists change, so counting them here matches what
+    // the Songs tab lists.
+    prisma.song.count({ where: { artistId: id } }),
+    prisma.song.count({ where: { artistId: id, listened: true } }),
+    tab === "songs"
+      ? prisma.release.findMany({
+          where: { artistId: id, tracks: { some: {} } },
+          orderBy: { releaseDate: "desc" },
+          include: {
+            tracks: {
+              orderBy: { position: "asc" },
+              include: {
+                song: {
+                  select: {
+                    id: true,
+                    listened: true,
+                    _count: { select: { tracks: true } },
+                  },
                 },
               },
             },
           },
-        },
-      },
-    },
-  });
+        })
+      : Promise.resolve([]),
+  ]);
 
   if (!artist) notFound();
 
@@ -68,30 +89,11 @@ export default async function ArtistPage({
   const isImported = artist.source === IMPORT_SOURCE;
   const isPaused = artist.status === "PAUSED";
 
-  const releasesWithSongs = artist.releases.filter(
-    (release) => release.tracks.length > 0,
-  );
   const missingSongs = canLoadTracks
     ? artist.releases.filter(
         (release) => release.tracksSyncedAt === null && release.externalId !== null,
       ).length
     : 0;
-  // Counted per song, not per track: the same song on an album and a compilation
-  // is one thing to listen to, not two.
-  const songIds = new Set(
-    artist.releases.flatMap((release) =>
-      release.tracks.flatMap((track) => (track.song ? [track.song.id] : [])),
-    ),
-  );
-  const heardSongIds = new Set(
-    artist.releases.flatMap((release) =>
-      release.tracks.flatMap((track) =>
-        track.song?.listened ? [track.song.id] : [],
-      ),
-    ),
-  );
-  const songCount = songIds.size;
-  const heardSongCount = heardSongIds.size;
 
   return (
     <div className="flex flex-col gap-10">

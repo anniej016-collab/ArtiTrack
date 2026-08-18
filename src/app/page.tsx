@@ -17,6 +17,7 @@ import { ArtistFilter } from "@/components/ArtistFilter";
 import {
   CollapsibleSection,
   FILTER_MIN,
+  CARD_PREVIEW,
   LIST_PREVIEW,
   PREVIEW_MIN,
 } from "@/components/CollapsibleSection";
@@ -130,13 +131,20 @@ function ReleaseGroup({
 
   // Denser than the artist page: here the grid shares the screen with three
   // other sections, so tiles stay small enough to leave room for them.
+  //
+  // Sliced as well as clamped. The CSS decides how many of these are visible at
+  // the current width; the slice decides how many are worth sending at all,
+  // which the CSS alone could never do — a preview of a 200-record queue was
+  // shipping all 200 and hiding 188 of them.
+  const shown = clamp ? releases.slice(0, CARD_PREVIEW) : releases;
+
   return (
     <ul
       className={`grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 ${
         clamp ? "clamp-rows" : ""
       }`}
     >
-      {releases.map((release) => (
+      {shown.map((release) => (
         <ReleaseCard
           key={release.id}
           release={release}
@@ -187,6 +195,8 @@ function ArtistGroup({
     );
   }
 
+  const shownCards = clamp ? artists.slice(0, CARD_PREVIEW) : artists;
+
   return (
     <ul
       id={id}
@@ -194,7 +204,7 @@ function ArtistGroup({
         clamp ? "clamp-rows" : ""
       }`}
     >
-      {artists.map((artist) => (
+      {shownCards.map((artist) => (
         <ArtistCard key={artist.id} artist={artist} />
       ))}
     </ul>
