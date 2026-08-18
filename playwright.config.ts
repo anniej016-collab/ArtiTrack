@@ -48,8 +48,15 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   reporter: process.env.CI ? "line" : "list",
-  timeout: 60_000,
-  expect: { timeout: 15_000 },
+  /*
+   * Generous, because these run against a development server compiling routes
+   * on demand while the whole suite hammers it. A server action that returns
+   * in well under a second on its own can take many times that with the rest
+   * of the suite queued behind it, and a tight limit turns that into a failure
+   * that says nothing about the app.
+   */
+  timeout: 120_000,
+  expect: { timeout: 30_000 },
 
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,

@@ -3,6 +3,8 @@ import {
   addArtist,
   loadAllTracks,
   openArtist,
+  openRelease,
+  openReleasesTab,
   resetDatabase,
   resetPreferences,
 } from "./helpers";
@@ -69,9 +71,8 @@ test("hearing a release means hearing every song on it", async ({ page }, testIn
 
   await loadAllTracks(page);
 
-  await page.getByRole("link", { name: /Releases ·/ }).click();
-  await page.getByRole("link", { name: "In Testing" }).click();
-  await page.waitForURL(/\/releases\//);
+  await openReleasesTab(page);
+  await openRelease(page, "In Testing");
 
   await expect(page.getByText(/0 of 2 songs heard/)).toBeVisible();
   await releaseToggle(page, "Mark heard").click();
@@ -93,19 +94,14 @@ test("un-hearing a release keeps songs heard by way of another release", async (
 
   // The compilation carries the album's two songs plus a remaster of a third.
   await page.goto(artistUrl);
-  await page.getByRole("link", { name: "In Testing" }).click();
-  await page.waitForURL(/\/releases\//);
-  // Anchored to content only this page has: the URL changes before the new
-  // page renders, and the artist grid behind it carries toggles with the very
-  // same name, so acting too early clicks the wrong record entirely.
+  await openRelease(page, "In Testing");
   await expect(page.getByText(/0 of 2 songs heard/)).toBeVisible();
 
   await releaseToggle(page, "Mark heard").click();
   await expect(page.getByText(/2 of 2 songs heard/)).toBeVisible();
 
   await page.goto(artistUrl);
-  await page.getByRole("link", { name: "Very Best Of Testhead" }).click();
-  await page.waitForURL(/\/releases\//);
+  await openRelease(page, "Very Best Of Testhead");
   // Two of its three songs came from the album that was just marked heard.
   await expect(page.getByText(/2 of 3 songs heard/)).toBeVisible();
 
@@ -118,11 +114,7 @@ test("un-hearing a release keeps songs heard by way of another release", async (
 
   // ...but must not un-hear the album whose songs it borrowed.
   await page.goto(artistUrl);
-  await page.getByRole("link", { name: "In Testing" }).click();
-  await page.waitForURL(/\/releases\//);
-  // The heading first: waitForURL returns before the new page is on screen.
-  await expect(page.getByRole("heading", { name: "In Testing" })).toBeVisible();
-
+  await openRelease(page, "In Testing");
   await expect(page.getByText(/2 of 2 songs heard/)).toBeVisible();
   await expect(releaseToggle(page, "Heard")).toBeVisible();
 });
@@ -134,9 +126,8 @@ test("ticking off the last song completes the release", async ({ page }, testInf
   await openArtist(page, "Testhead");
   await loadAllTracks(page);
 
-  await page.getByRole("link", { name: /Releases ·/ }).click();
-  await page.getByRole("link", { name: "Kid T" }).click();
-  await page.waitForURL(/\/releases\//);
+  await openReleasesTab(page);
+  await openRelease(page, "Kid T");
 
   // Kid T is a single-track release, so one song finishes it.
   await expect(releaseToggle(page, "Mark heard")).toBeVisible();
@@ -189,10 +180,8 @@ test("a release heard before songs existed does not report them unheard", async 
   await expect(page.getByRole("button", { name: /^Mark .+ heard$/ })).toHaveCount(0);
 
   // And un-ticking a release still un-ticks the songs only it carries.
-  await page.getByRole("link", { name: /Releases ·/ }).click();
-  await page.getByRole("link", { name: "Testbag EP" }).click();
-  await page.waitForURL(/\/releases\//);
-  await expect(page.getByRole("heading", { name: "Testbag EP" })).toBeVisible();
+  await openReleasesTab(page);
+  await openRelease(page, "Testbag EP");
   await expect(page.getByText(/1 of 1 songs heard/)).toBeVisible();
 
   await releaseToggle(page, "Heard").click();

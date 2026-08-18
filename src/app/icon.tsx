@@ -17,7 +17,7 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #a855f7, #ec4899)",
+          background: "linear-gradient(135deg, #7f56ff, #16dfd0)",
         }}
       >
         <div
@@ -25,7 +25,7 @@ export default function Icon() {
             width: 300,
             height: 300,
             borderRadius: 999,
-            background: "#09090f",
+            background: "#08070d",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -36,7 +36,7 @@ export default function Icon() {
               width: 78,
               height: 78,
               borderRadius: 999,
-              background: "linear-gradient(135deg, #a855f7, #ec4899)",
+              background: "linear-gradient(135deg, #7f56ff, #16dfd0)",
             }}
           />
         </div>

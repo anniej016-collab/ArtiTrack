@@ -78,6 +78,32 @@ export async function loadAllTracks(page: Page) {
   await expect(load).toHaveCount(0);
 }
 
+/**
+ * Switches to the Releases tab and waits until it is actually showing.
+ *
+ * The tabs are client-side links, so the click resolves long before the new
+ * content is on screen. Acting immediately after it reaches whatever the
+ * previous tab left behind.
+ */
+export async function openReleasesTab(page: Page) {
+  const tab = page.getByRole("link", { name: /^Releases ·/ });
+  await tab.click();
+  await expect(tab).toHaveAttribute("aria-current", "page");
+}
+
+/**
+ * Opens one release from an artist's grid, settled on its own page.
+ *
+ * waitForURL returns as soon as the address changes, which is before the page
+ * renders — and the grid left behind carries controls with the same names as
+ * the release page's, so acting too early acts on the wrong record.
+ */
+export async function openRelease(page: Page, title: string) {
+  await page.getByRole("link", { name: title, exact: true }).click();
+  await page.waitForURL(/\/releases\//);
+  await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+}
+
 /** Ids are generated, so tests find an artist by opening them from the list. */
 export async function openArtist(page: Page, name: string) {
   await page.goto("/");

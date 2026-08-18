@@ -63,7 +63,12 @@ losing their history.
 - **Download your data** as JSON from the link at the bottom of any page. What you've
   heard is hand-entered and can't be re-fetched from anywhere, so it's worth keeping a
   copy.
-- **Install it to a home screen** — it opens without browser chrome, like an app.
+- **Install it to a home screen** — it opens without browser chrome, like an app. There's
+  an **Install as an app** link in the footer, because whether a browser offers to install
+  by itself differs per browser and per device: the same app can prompt on a phone and
+  stay silent on a tablet. Where the browser hands the offer over, the link installs
+  directly; where it doesn't — Safari never does, on any iPhone or iPad — it says which
+  menu to use instead.
 - **Import a discography you keep yourself** from the link in the footer. For a catalogue
   no music service covers properly — every unit, side project, soundtrack and solo
   release, with tracklists and cover art. Paste the file, and its releases become artists

@@ -58,3 +58,36 @@ test("the app declares itself installable", async ({ page, request }) => {
   expect(icon.status()).toBe(200);
   expect(icon.headers()["content-type"]).toContain("image/png");
 });
+
+test("the install control is there even when no browser prompt is", async ({ page }) => {
+  /*
+   * Whether a browser offers to install is its own decision, and the rules
+   * differ per browser and per device — the same app prompts on one and stays
+   * silent on another. The app carries its own control so there is always a
+   * way in, and says what to do where it can't do it itself.
+   */
+  await page.goto("/");
+
+  const install = page.getByRole("button", { name: "Install as an app" });
+  await expect(install).toBeVisible();
+
+  await install.click();
+  await expect(page.getByText(/Add to Home screen|Add to Home Screen/)).toBeVisible();
+});
+
+test("the icon and manifest agree with the app's own colours", async ({ request }) => {
+  // The icon is generated so it can't drift from the palette; it drifted once,
+  // and stayed on the old violet-and-pink for a whole redesign.
+  const manifest = await (await request.get("/manifest.webmanifest")).json();
+  expect(manifest.theme_color).toBe("#08070d");
+  expect(manifest.background_color).toBe("#08070d");
+  expect(manifest.display).toBe("standalone");
+
+  // At least one icon big enough for every installability rule that asks.
+  expect(manifest.icons.some((i: { sizes: string }) => i.sizes.includes("512x512"))).toBe(true);
+  expect(manifest.icons.some((i: { purpose: string }) => i.purpose === "maskable")).toBe(true);
+
+  const icon = await request.get("/icon");
+  expect(icon.status()).toBe(200);
+  expect(icon.headers()["content-type"]).toContain("image/png");
+});

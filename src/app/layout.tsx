@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Space_Grotesk } from "next/font/google";
 import Link from "next/link";
 import { HeaderNav } from "@/components/HeaderNav";
+import { InstallButton } from "@/components/InstallButton";
 import { VinylIcon } from "@/components/icons";
 import "./globals.css";
 
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#09090f",
+  themeColor: "#08070d",
   // The app is dark-only, so tell the browser before any CSS loads.
   colorScheme: "dark",
 };
@@ -73,6 +74,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             >
               Import a discography
             </Link>
+            <InstallButton />
           </div>
         </footer>
       </body>
