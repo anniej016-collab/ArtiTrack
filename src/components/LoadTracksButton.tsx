@@ -19,10 +19,29 @@ function Submit({ idle, busy }: { idle: string; busy: string }) {
   );
 }
 
-export function LoadReleaseTracksButton({ releaseId }: { releaseId: string }) {
+/**
+ * Fetches this release's tracklist, or asks for it again.
+ *
+ * Two labels for one action, because after the first press it is a different
+ * job: "Load songs" reads as unfinished business and belongs beside the other
+ * things to do with the release, while a refresh is housekeeping — worth having
+ * (services fill in tracklists late, correct titles and add tracks to a
+ * re-issue) but not worth advertising. Nothing expires: there is no interval
+ * after which this has to be pressed again.
+ */
+export function LoadReleaseTracksButton({
+  releaseId,
+  loaded = false,
+}: {
+  releaseId: string;
+  loaded?: boolean;
+}) {
   return (
     <form action={loadReleaseTracksAction.bind(null, releaseId)}>
-      <Submit idle="Load songs" busy="Loading…" />
+      <Submit
+        idle={loaded ? "Refresh songs" : "Load songs"}
+        busy={loaded ? "Refreshing…" : "Loading…"}
+      />
     </form>
   );
 }

@@ -18,12 +18,20 @@ import { MAX_FAVOURITE_SONGS } from "@/lib/favourites";
 export function FavouriteSongs({
   count,
   picked,
+  refresh,
   children,
 }: {
   /** How many songs the release has, for the heading. */
   count: number;
   /** How many are already favourites. */
   picked: number;
+  /**
+   * Re-fetching the tracklist, when there is a tracklist to re-fetch. It lives
+   * up here rather than beside Heard and Set aside: once the songs are in, it
+   * is housekeeping about the list, not one of the things to do with the
+   * record — and sitting in that row it read as unfinished business.
+   */
+  refresh?: ReactNode;
   children: ReactNode;
 }) {
   const [picking, setPicking] = useState(false);
@@ -33,25 +41,28 @@ export function FavouriteSongs({
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="eyebrow">Songs {count > 0 && `· ${count}`}</h2>
 
-        {count > 0 && (
-          <div className="flex items-center gap-2">
-            {picking && (
-              <span className="text-xs text-faint">
-                {picked === MAX_FAVOURITE_SONGS
-                  ? `${MAX_FAVOURITE_SONGS} picked — that's the limit`
-                  : `${picked} of ${MAX_FAVOURITE_SONGS} picked`}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => setPicking((on) => !on)}
-              aria-pressed={picking}
-              className="btn-ghost px-2.5 py-1 text-xs"
-            >
-              {picking ? "Done" : picked > 0 ? "Edit favourites" : "Pick favourites"}
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {count > 0 && (
+            <>
+              {picking && (
+                <span className="text-xs text-faint">
+                  {picked === MAX_FAVOURITE_SONGS
+                    ? `${MAX_FAVOURITE_SONGS} picked — that's the limit`
+                    : `${picked} of ${MAX_FAVOURITE_SONGS} picked`}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setPicking((on) => !on)}
+                aria-pressed={picking}
+                className="btn-ghost px-2.5 py-1 text-xs"
+              >
+                {picking ? "Done" : picked > 0 ? "Edit favourites" : "Pick favourites"}
+              </button>
+            </>
+          )}
+          {refresh}
+        </div>
       </div>
 
       {children}

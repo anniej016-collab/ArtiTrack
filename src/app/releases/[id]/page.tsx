@@ -112,16 +112,21 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
                 setAside={release.setAside}
               />
             )}
-            {canLoadTracks && release.tracks.length > 0 && (
-              <LoadReleaseTracksButton releaseId={release.id} />
-            )}
           </div>
 
           <ReleaseNotes releaseId={release.id} notes={release.notes} />
         </div>
       </section>
 
-      <FavouriteSongs count={release.tracks.length} picked={favourites}>
+      <FavouriteSongs
+        count={release.tracks.length}
+        picked={favourites}
+        refresh={
+          canLoadTracks && release.tracks.length > 0 ? (
+            <LoadReleaseTracksButton releaseId={release.id} loaded />
+          ) : null
+        }
+      >
         {release.tracks.length > 0 ? (
           <TrackList
             favourites
