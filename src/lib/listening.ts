@@ -87,8 +87,9 @@ async function deriveReleasesFromSongs(
       data: {
         listened: complete,
         // An existing date is kept: it records when it was first heard, and
-        // completing the last song doesn't rewrite that history.
-        listenedAt: complete ? (release.listenedAt ?? new Date()) : null,
+        // completing the last song doesn't rewrite that history. Falling below
+        // complete keeps it too — see setReleaseListenedDeep.
+        listenedAt: complete ? (release.listenedAt ?? new Date()) : release.listenedAt,
       },
     });
   }
@@ -120,9 +121,18 @@ export async function setReleaseListenedDeep(
     where: { id: release.id },
     data: {
       listened,
-      // Marking something now is a real, dated event, unlike an imported back
-      // catalogue. Un-marking clears the date along with the flag.
-      listenedAt: listened ? (release.listenedAt ?? new Date()) : null,
+      /*
+       * Marking something now is a real, dated event, unlike an imported back
+       * catalogue.
+       *
+       * Un-marking keeps the date rather than clearing it. Clearing it meant an
+       * accidental un-tick destroyed the only record of when you heard
+       * something, and re-ticking then stamped today — so a record from years
+       * ago reappeared under "Recently listened" as though it had just been
+       * played. The date is what happened; the flag is what you say about it.
+       * Only the flag is yours to toggle.
+       */
+      listenedAt: listened ? (release.listenedAt ?? new Date()) : release.listenedAt,
       // Hearing something settles the question it was set aside from, so the
       // decision not to play it is spent.
       ...(listened ? { setAside: false, setAsideAt: null } : {}),
@@ -139,8 +149,14 @@ export async function setReleaseListenedDeep(
   }
 
   if (listened) {
+    // Songs heard once already keep the date they were first heard on; only
+    // ones with no date at all get today's, same rule as the release above.
     await prisma.song.updateMany({
-      where: { id: { in: songIds }, listened: false },
+      where: { id: { in: songIds }, listened: false, listenedAt: { not: null } },
+      data: { listened: true },
+    });
+    await prisma.song.updateMany({
+      where: { id: { in: songIds }, listened: false, listenedAt: null },
       data: { listened: true, listenedAt: new Date() },
     });
   } else {
@@ -158,7 +174,9 @@ export async function setReleaseListenedDeep(
 
     await prisma.song.updateMany({
       where: { id: { in: songIds.filter((id) => !keep.has(id)) } },
-      data: { listened: false, listenedAt: null },
+      // The date stays. Un-marking says you were wrong about having heard it,
+      // not that the day it was heard on never happened.
+      data: { listened: false },
     });
   }
 
@@ -183,9 +201,20 @@ export async function setSongListenedDeep(
   songId: string,
   listened: boolean,
 ): Promise<Touched> {
+  const existing = await prisma.song.findUnique({
+    where: { id: songId },
+    select: { listenedAt: true },
+  });
+
   const song = await prisma.song.update({
     where: { id: songId },
-    data: { listened, listenedAt: listened ? new Date() : null },
+    data: {
+      listened,
+      // Only ever written when there is no date yet: an existing one records
+      // when the song was heard, which neither un-ticking nor re-ticking
+      // changes.
+      ...(listened && existing?.listenedAt == null ? { listenedAt: new Date() } : {}),
+    },
     select: { artistId: true },
   });
 

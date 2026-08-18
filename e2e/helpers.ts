@@ -19,6 +19,22 @@ export async function resetDatabase() {
   }
 }
 
+/**
+ * Runs one statement against the test database.
+ *
+ * For the handful of states the app has no way to produce on purpose — a
+ * release heard years ago, say, when the only button available stamps today.
+ */
+export async function runSql(text: string, values: unknown[] = []) {
+  const client = new Client({ connectionString });
+  await client.connect();
+  try {
+    return await client.query(text, values);
+  } finally {
+    await client.end();
+  }
+}
+
 export async function resetPreferences(page: Page) {
   await page.context().clearCookies();
 }

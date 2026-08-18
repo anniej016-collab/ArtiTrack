@@ -15,6 +15,8 @@ type Provider = {
   label: string;
   searchArtists: (query: string) => Promise<ProviderArtist[]>;
   fetchArtistReleases: (externalId: string) => Promise<ProviderRelease[]>;
+  /** One artist's own record, for a picture that may have changed since. */
+  fetchArtist?: (externalId: string) => Promise<ProviderArtist | null>;
   /** Not every source exposes tracklists cheaply enough to be worth fetching. */
   fetchReleaseTracks?: (externalId: string) => Promise<ProviderTrack[]>;
 };
@@ -25,6 +27,7 @@ const PROVIDERS: Record<ProviderKey, Provider> = {
     label: "Deezer",
     searchArtists: deezer.searchArtists,
     fetchArtistReleases: deezer.fetchArtistReleases,
+    fetchArtist: deezer.fetchArtist,
     fetchReleaseTracks: deezer.fetchReleaseTracks,
   },
   musicbrainz: {
@@ -32,6 +35,8 @@ const PROVIDERS: Record<ProviderKey, Provider> = {
     label: "MusicBrainz",
     searchArtists: musicbrainz.searchArtists,
     fetchArtistReleases: musicbrainz.fetchArtistReleases,
+    // No fetchArtist either: MusicBrainz carries no artwork at all, so there is
+    // never a newer picture to go and get.
     // Reaching a tracklist here means a request per release and then per
     // recording, which is far too many to be worth it.
   },

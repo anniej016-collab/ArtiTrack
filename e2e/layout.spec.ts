@@ -84,7 +84,12 @@ test("a card preview shows exactly two rows", async ({ page }, testInfo) => {
   expect(await page.locator("#to-listen li:visible").count()).toBeGreaterThan(6);
 });
 
-test("following is ordered by most recently added", async ({ page }) => {
+test("following is ordered by name, not by when you added them", async ({ page }) => {
+  /*
+   * It was recency, on the reasoning that a preview should show whoever you
+   * just followed. In use that is worth about a minute, against a list whose
+   * every other visit is someone looking up a name they already know.
+   */
   await addArtist(page, "Testhead", { heardAlready: true });
   await addArtist(page, "Test Moscow", { heardAlready: true });
 
@@ -92,5 +97,23 @@ test("following is ordered by most recently added", async ({ page }) => {
   const names = await page
     .locator("#following li a[href^='/artists/']")
     .allTextContents();
-  expect(names[0].trim()).toBe("Test Moscow");
+  expect(names.map((name) => name.trim())).toEqual(["Test Moscow", "Testhead"]);
+});
+
+test("paused artists are ordered by name too", async ({ page }) => {
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await addArtist(page, "Test Moscow", { heardAlready: true });
+
+  // Pause the alphabetically later one first, so recency and name disagree.
+  for (const name of ["Testhead", "Test Moscow"]) {
+    await page.goto("/");
+    await page.locator("#following").getByRole("link", { name }).first().click();
+    await page.waitForURL(/\/artists\//);
+    await page.getByRole("button", { name: "Pause" }).click();
+    await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
+  }
+
+  await page.goto("/");
+  const names = await page.locator("#paused li a[href^='/artists/']").allTextContents();
+  expect(names.map((name) => name.trim())).toEqual(["Test Moscow", "Testhead"]);
 });

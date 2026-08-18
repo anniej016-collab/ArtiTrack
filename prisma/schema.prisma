@@ -22,12 +22,15 @@ enum ReleaseType {
 }
 
 model Artist {
-  id       String       @id @default(cuid())
-  name     String
-  imageUrl String?
-  notes    String?
-  status   FollowStatus @default(ACTIVE)
-  pausedAt DateTime?
+  id             String       @id @default(cuid())
+  name           String
+  imageUrl       String?
+  /// Set when the picture was typed in rather than taken from a service, so
+  /// re-checking an artist never overwrites one chosen by hand.
+  imageUrlByHand Boolean      @default(false)
+  notes          String?
+  status         FollowStatus @default(ACTIVE)
+  pausedAt       DateTime?
 
   // Where this artist came from: "manual", "import", or a provider key such as
   // as "deezer". This is their origin, and is not what decides syncing.
@@ -65,6 +68,10 @@ model Release {
   notes       String?
   /// 1–5, or null for unrated.
   rating      Int?
+  /// Picked out as a favourite. Deliberately not the same as a five-star
+  /// rating: a rating is a judgement of the record, a favourite is a shortlist,
+  /// and plenty of people have more five-stars than they would shortlist.
+  favourite   Boolean     @default(false)
   coverUrl    String?
   createdAt   DateTime    @default(now())
 
@@ -119,6 +126,14 @@ model Track {
   /// Length in seconds, when the provider reports one.
   duration  Int?
 
+  /// A favourite song *on this release*, at most three per release.
+  ///
+  /// On the track rather than the song, unlike listening state: hearing a song
+  /// is a fact about the song wherever it turns up, but a favourite is a
+  /// statement about one record. A track can be a highlight of the album and
+  /// merely present on the greatest-hits.
+  favourite Boolean @default(false)
+
   // Same idea as Release.externalId: re-fetching a tracklist updates rows
   // instead of duplicating them.
   externalId String?
@@ -155,11 +170,11 @@ model Discovery {
   heardAt DateTime?
 
   /// Where it came from: "manual", or a playlist source such as "spotify".
-  source String @default("manual")
+  source     String  @default("manual")
   /// The source's own id, so re-reading a playlist updates instead of duplicating.
   externalId String?
   /// A link back to wherever it was found.
-  url String?
+  url        String?
 
   createdAt DateTime @default(now())
 

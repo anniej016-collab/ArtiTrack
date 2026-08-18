@@ -5,14 +5,17 @@ import { ListenedToggle } from "@/components/ListenedToggle";
 import { SetAsideToggle } from "@/components/SetAsideToggle";
 import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
 import { TrackList } from "@/components/TrackList";
+import { FavouriteSongs } from "@/components/FavouriteSongs";
 import { LoadReleaseTracksButton } from "@/components/LoadTracksButton";
 import { RatingStars } from "@/components/RatingStars";
+import { FavouriteReleaseButton } from "@/components/FavouriteReleaseButton";
 import { EditReleaseForm } from "@/components/EditReleaseForm";
 import { ReleaseNotes } from "@/components/ReleaseNotes";
 import { ManualTracklistForm } from "@/components/ManualTracklistForm";
 import { CoverPlaceholder, VinylIcon } from "@/components/icons";
 import { providerLabel, supportsTracks } from "@/lib/providers";
 import { formatDate } from "@/lib/format";
+import { MAX_FAVOURITE_SONGS } from "@/lib/favourites";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +45,7 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
   if (!release) notFound();
 
   const heard = release.tracks.filter((track) => track.song?.listened).length;
+  const favourites = release.tracks.filter((track) => track.favourite).length;
   const syncSource = release.artist.syncSource;
   const canLoadTracks =
     syncSource !== null && supportsTracks(syncSource) && release.externalId !== null;
@@ -91,8 +95,12 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
             )}
           </div>
 
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
             <RatingStars releaseId={release.id} rating={release.rating} />
+            <FavouriteReleaseButton
+              releaseId={release.id}
+              favourite={release.favourite}
+            />
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -113,13 +121,11 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
         </div>
       </section>
 
-      <section>
-        <h2 className="eyebrow mb-3">
-          Songs {release.tracks.length > 0 && `· ${release.tracks.length}`}
-        </h2>
-
+      <FavouriteSongs count={release.tracks.length} picked={favourites}>
         {release.tracks.length > 0 ? (
           <TrackList
+            favourites
+            atLimit={favourites >= MAX_FAVOURITE_SONGS}
             tracks={release.tracks.map((track) => ({
               ...track,
               appearances: track.song?._count.tracks,
@@ -140,7 +146,7 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
             {canLoadTracks && <LoadReleaseTracksButton releaseId={release.id} />}
           </div>
         )}
-      </section>
+      </FavouriteSongs>
 
       {/* Offered whenever nothing can be fetched, and as an editor once songs
           have been typed in — the two cases the provider can't cover. */}

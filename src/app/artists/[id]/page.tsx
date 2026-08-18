@@ -16,6 +16,7 @@ import { deleteArtist } from "@/lib/actions";
 import { isSyncableSource, providerLabel, supportsTracks } from "@/lib/providers";
 import { IMPORT_SOURCE } from "@/lib/import/apply";
 import { formatDate } from "@/lib/format";
+import { byRating } from "@/lib/release-order";
 
 export default async function ArtistPage({
   params,
@@ -24,7 +25,11 @@ export default async function ArtistPage({
   const { id } = await params;
   // A search param rather than a cookie: which tab you're on is about this
   // visit, not a standing preference, and it keeps the tabs linkable.
-  const tab = (await searchParams)?.tab === "songs" ? "songs" : "releases";
+  const query = await searchParams;
+  const tab = query?.tab === "songs" ? "songs" : "releases";
+  // Ranked or chronological. Also a search param, for the same reason: it is
+  // how you are reading this artist right now, not a setting for the whole app.
+  const sort = query?.sort === "rating" ? "rating" : "date";
 
   const artist = await prisma.artist.findUnique({
     where: { id },
@@ -52,6 +57,8 @@ export default async function ArtistPage({
   if (!artist) notFound();
 
   const listenedCount = artist.releases.filter((release) => release.listened).length;
+  const favourites = artist.releases.filter((release) => release.favourite);
+  const orderedReleases = sort === "rating" ? byRating(artist.releases) : artist.releases;
   // Where releases are fetched from, which is separate from where the artist
   // came from: an imported artist can be pointed at a service later.
   const syncSource = artist.syncSource;
@@ -196,11 +203,28 @@ export default async function ArtistPage({
         <ArtistNotes artistId={artist.id} notes={artist.notes} />
       </section>
 
+      {/* Above the tabs, because this is the answer to "what should I play?" —
+          the question the rest of the page makes you work for. Absent entirely
+          until something is picked, so it never sits there as an empty shelf. */}
+      {favourites.length > 0 && (
+        <section>
+          <h2 className="section-title mb-4">
+            Favourites
+            <span className="text-xs font-normal text-faint">{favourites.length}</span>
+          </h2>
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+            {favourites.map((release) => (
+              <ReleaseCard key={release.id} release={release} showRating />
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex items-center gap-0.5 rounded-full border border-line p-0.5">
             <Link
-              href={`/artists/${artist.id}`}
+              href={`/artists/${artist.id}${sort === "rating" ? "?sort=rating" : ""}`}
               aria-current={tab === "releases" ? "page" : undefined}
               className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                 tab === "releases" ? "chip-on" : "text-muted hover:text-text"
@@ -209,7 +233,7 @@ export default async function ArtistPage({
               Releases · {artist.releases.length}
             </Link>
             <Link
-              href={`/artists/${artist.id}?tab=songs`}
+              href={`/artists/${artist.id}?tab=songs${sort === "rating" ? "&sort=rating" : ""}`}
               aria-current={tab === "songs" ? "page" : undefined}
               className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                 tab === "songs" ? "chip-on" : "text-muted hover:text-text"
@@ -224,6 +248,34 @@ export default async function ArtistPage({
               {heardSongCount} of {songCount} heard
             </p>
           )}
+
+          {/* Only worth offering once there is a ranking to read. */}
+          {tab === "releases" && artist.releases.some((r) => r.rating !== null) && (
+            <div
+              className="inline-flex items-center gap-0.5 rounded-full border border-line p-0.5"
+              role="group"
+              aria-label="Order"
+            >
+              <Link
+                href={`/artists/${artist.id}`}
+                aria-current={sort === "date" ? "page" : undefined}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                  sort === "date" ? "chip-on" : "text-muted hover:text-text"
+                }`}
+              >
+                Newest
+              </Link>
+              <Link
+                href={`/artists/${artist.id}?sort=rating`}
+                aria-current={sort === "rating" ? "page" : undefined}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                  sort === "rating" ? "chip-on" : "text-muted hover:text-text"
+                }`}
+              >
+                Best rated
+              </Link>
+            </div>
+          )}
         </div>
 
         {tab === "releases" ? (
@@ -234,8 +286,16 @@ export default async function ArtistPage({
             </div>
           ) : (
             <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-              {artist.releases.map((release) => (
-                <ReleaseCard key={release.id} release={release} showListenedDate />
+              {orderedReleases.map((release) => (
+                <ReleaseCard
+                  key={release.id}
+                  release={release}
+                  showListenedDate
+                  // Only in the ranked view: a rating you sorted by has to be
+                  // legible, but on the chronological list it is one more thing
+                  // under every title in a grid that is already dense.
+                  showRating={sort === "rating"}
+                />
               ))}
             </ul>
           )

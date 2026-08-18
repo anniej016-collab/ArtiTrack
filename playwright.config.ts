@@ -4,7 +4,7 @@ import "dotenv/config";
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3999;
-const MOCK_PORT = 4199;
+export const MOCK_PORT = 4199;
 export const TEST_CRON_SECRET = "test-cron-secret";
 
 /**

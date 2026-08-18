@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ListenedToggle } from "@/components/ListenedToggle";
 import { SetAsideToggle } from "@/components/SetAsideToggle";
 import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
-import { CoverPlaceholder } from "@/components/icons";
+import { CoverPlaceholder, HeartIcon } from "@/components/icons";
 import { formatDate } from "@/lib/format";
 
 export type ReleaseCardData = {
@@ -15,20 +15,45 @@ export type ReleaseCardData = {
   listened: boolean;
   listenedAt: Date | null;
   setAside: boolean;
+  rating?: number | null;
+  favourite?: boolean;
   artistId: string;
   artist?: { name: string };
 };
+
+/**
+ * A rating at a glance, shown as pips rather than five drawn stars.
+ *
+ * At this size five outlined stars turn to mush, and the row has to sit under a
+ * title without competing with it. Only filled pips are drawn — the empty half
+ * of the scale is the part nobody reads.
+ */
+function RatingPips({ rating }: { rating: number }) {
+  return (
+    <p className="mt-1 flex items-center gap-1" title={`${rating} out of 5`}>
+      <span className="flex gap-[3px]" aria-hidden="true">
+        {Array.from({ length: rating }, (_, index) => (
+          <span key={index} className="size-1.5 rounded-full bg-accent" />
+        ))}
+      </span>
+      <span className="sr-only">Rated {rating} out of 5</span>
+    </p>
+  );
+}
 
 /** Shared by the home grid and the artist page, so the two never drift apart. */
 export function ReleaseCard({
   release,
   showArtist = false,
   showListenedDate = false,
+  showRating = false,
   compact = false,
 }: {
   release: ReleaseCardData;
   showArtist?: boolean;
   showListenedDate?: boolean;
+  /** Stars under the title. Only where the ranking is the point of the list. */
+  showRating?: boolean;
   /** Denser text for the home page, where many tiles share the screen with other sections. */
   compact?: boolean;
 }) {
@@ -81,6 +106,20 @@ export function ReleaseCard({
             />
           </div>
         )}
+
+        {/* A mark, not a control: both top corners are already spoken for, and
+            the place to change your mind is the release's own page. */}
+        {release.favourite && (
+          <div
+            className={`absolute z-10 flex items-center justify-center rounded-full bg-black/55 p-1 text-accent backdrop-blur-sm ${
+              compact ? "bottom-1.5 left-1.5" : "bottom-2 left-2"
+            }`}
+            title="One of your favourites"
+          >
+            <HeartIcon className="size-3.5" filled />
+            <span className="sr-only">Favourite</span>
+          </div>
+        )}
       </div>
 
       <div className="min-w-0">
@@ -121,7 +160,13 @@ export function ReleaseCard({
           </span>
         </div>
 
-        {showListenedDate && release.listenedAt && (
+        {showRating && release.rating != null && (
+          <RatingPips rating={release.rating} />
+        )}
+
+        {/* Both, not just the date: the date survives un-ticking now, so a
+            release you have taken back off would otherwise still say "Heard". */}
+        {showListenedDate && release.listened && release.listenedAt && (
           <p className="mt-1 text-[0.7rem] text-faint">
             Heard {formatDate(release.listenedAt)}
           </p>

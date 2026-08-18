@@ -129,6 +129,32 @@ export async function searchArtists(query: string): Promise<ProviderArtist[]> {
   });
 }
 
+/**
+ * Re-reads one artist's own record, for their current picture.
+ *
+ * Separate from searchArtists because searching by name to find an artist you
+ * already have is both wasteful and unreliable — two artists share a name often
+ * enough, and the id is already known.
+ */
+export async function fetchArtist(
+  externalArtistId: string,
+): Promise<ProviderArtist | null> {
+  const item = asRecord(await getJson(`/artist/${encodeURIComponent(externalArtistId)}`));
+  if (!item) return null;
+
+  const externalId = item["id"] === undefined ? null : String(item["id"]);
+  const name = str(item["name"]);
+  if (!externalId || !name) return null;
+
+  return {
+    source: PROVIDER_KEY,
+    externalId,
+    name,
+    imageUrl: str(item["picture_medium"]) ?? str(item["picture"]),
+    albumCount: typeof item["nb_album"] === "number" ? item["nb_album"] : null,
+  };
+}
+
 export async function fetchArtistReleases(
   externalArtistId: string,
 ): Promise<ProviderRelease[]> {

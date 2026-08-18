@@ -92,3 +92,29 @@ export function UndoIcon({ className = "" }: { className?: string }) {
     </svg>
   );
 }
+
+/**
+ * Marks a favourite, filled or outlined from one path.
+ *
+ * A heart rather than a second star: releases are rated out of five with stars
+ * already, and two meanings on one shape would be unreadable.
+ */
+export function HeartIcon({
+  className = "",
+  filled = false,
+}: {
+  className?: string;
+  filled?: boolean;
+}) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
+      <path
+        d="M10 16.5S3 12.4 3 7.9A3.9 3.9 0 0 1 10 5.6a3.9 3.9 0 0 1 7 2.3c0 4.5-7 8.6-7 8.6z"
+        fill={filled ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

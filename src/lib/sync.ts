@@ -121,10 +121,20 @@ export async function persistReleases(
  * Paused artists are skipped. Not fetching new releases for them is the entire
  * point of pausing, so this is enforced here rather than left to callers.
  */
-export async function syncArtist(artistId: string): Promise<SyncResult | null> {
+export async function syncArtist(
+  artistId: string,
+  { refreshImage = false }: { refreshImage?: boolean } = {},
+): Promise<SyncResult | null> {
   const artist = await prisma.artist.findUnique({
     where: { id: artistId },
-    select: { id: true, status: true, syncSource: true, syncExternalId: true },
+    select: {
+      id: true,
+      status: true,
+      syncSource: true,
+      syncExternalId: true,
+      imageUrl: true,
+      imageUrlByHand: true,
+    },
   });
 
   if (!artist) return null;
@@ -141,10 +151,51 @@ export async function syncArtist(artistId: string): Promise<SyncResult | null> {
 
   await prisma.artist.update({
     where: { id: artist.id },
-    data: { lastSyncedAt: new Date() },
+    data: {
+      lastSyncedAt: new Date(),
+      ...(await freshImage(artist, provider, refreshImage)),
+    },
   });
 
   return result;
+}
+
+/**
+ * The artist's current picture from the service, when it is worth asking for.
+ *
+ * Only when *you* pressed check, never on the nightly run: a photo quietly
+ * changing overnight across a whole follow list is a library that looks
+ * different every morning for no reason you asked for. It also costs a second
+ * request per artist, which the scheduled sweep can least afford.
+ *
+ * A picture typed in by hand is never replaced, and a failure here is
+ * swallowed — the releases are what the sync is for, and losing them over a
+ * photograph would be the wrong trade.
+ */
+async function freshImage(
+  artist: {
+    syncExternalId: string | null;
+    imageUrl: string | null;
+    imageUrlByHand: boolean;
+  },
+  provider: NonNullable<ReturnType<typeof getProvider>>,
+  refreshImage: boolean,
+): Promise<{ imageUrl?: string }> {
+  if (!refreshImage) return {};
+  if (artist.imageUrlByHand) return {};
+  if (!provider.fetchArtist || !artist.syncExternalId) return {};
+
+  try {
+    const fetched = await provider.fetchArtist(artist.syncExternalId);
+    // Absence is not a new picture: a service that returns nothing has no
+    // opinion, and taking that as "delete the one you have" is how covers were
+    // lost to re-imports before.
+    if (!fetched?.imageUrl) return {};
+    if (fetched.imageUrl === artist.imageUrl) return {};
+    return { imageUrl: fetched.imageUrl };
+  } catch {
+    return {};
+  }
 }
 
 /** Runs a few requests at a time so a large follow list stays within a request budget. */

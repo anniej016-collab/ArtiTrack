@@ -240,17 +240,18 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       getViewModes(),
       getSectionStates(),
       getGroupMode(),
-      // Most recently added first, so a preview shows what you just followed
-      // rather than whoever happens to start with "A".
+      // Alphabetical, because this is the list you come back to. A follow list
+      // is looked up by name — recency only helps in the minute after adding
+      // someone, and costs you a stable place to find everyone else.
       prisma.artist.findMany({
         where: { status: "ACTIVE" },
-        orderBy: { createdAt: "desc" },
+        orderBy: { name: "asc" },
         select: artistSelect,
       }),
-      // Most recently paused first, for the same reason.
+      // Alphabetical too, so both artist lists read the same way.
       prisma.artist.findMany({
         where: { status: "PAUSED" },
-        orderBy: [{ pausedAt: "desc" }, { createdAt: "desc" }],
+        orderBy: { name: "asc" },
         select: artistSelect,
       }),
       prisma.release.findMany({
@@ -264,8 +265,16 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       // filter — the queue is narrowed after it is read.
       // Only releases marked by hand, which is what carries a date. An imported
       // back catalogue is listened but undated, and was never "recent".
+      //
+      // Still heard matters as much as dated: the date now survives un-ticking
+      // (so re-ticking restores it rather than reading as today), which without
+      // this left un-ticked releases sitting here as recent listens.
       prisma.release.findMany({
-        where: { listenedAt: { not: null }, artist: { status: "ACTIVE" } },
+        where: {
+          listened: true,
+          listenedAt: { not: null },
+          artist: { status: "ACTIVE" },
+        },
         orderBy: { listenedAt: "desc" },
         take: 8,
         include: { artist: { select: { name: true } } },

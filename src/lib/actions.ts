@@ -47,6 +47,7 @@ import { applyImport } from "@/lib/import/apply";
 import { matchDiscovery } from "@/lib/discovery-match";
 import { loadLibraryIndex } from "@/lib/library-index";
 import { songKey } from "@/lib/song-identity";
+import { MAX_FAVOURITE_SONGS } from "@/lib/favourites";
 import type { ReleaseCategory } from "@/lib/release-category";
 
 export async function createArtist(formData: FormData) {
@@ -57,7 +58,8 @@ export async function createArtist(formData: FormData) {
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
   await prisma.artist.create({
-    data: { name, imageUrl, notes },
+    // Typed in, so a service attached later never overwrites it.
+    data: { name, imageUrl, imageUrlByHand: imageUrl !== null, notes },
   });
 
   revalidatePath("/");
@@ -173,11 +175,20 @@ export async function updateArtist(artistId: string, formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return;
 
+  const imageUrl = imageField(formData, "imageUrl");
+  const before = await prisma.artist.findUnique({
+    where: { id: artistId },
+    select: { imageUrl: true },
+  });
+
   await prisma.artist.update({
     where: { id: artistId },
     data: {
       name,
-      imageUrl: imageField(formData, "imageUrl"),
+      imageUrl,
+      // Only when the picture itself changed. Marking every edit as by-hand
+      // would mean correcting a spelling quietly froze the photo for good.
+      ...(imageUrl !== before?.imageUrl ? { imageUrlByHand: imageUrl !== null } : {}),
       discographyUrl: imageField(formData, "discographyUrl"),
     },
   });
@@ -360,7 +371,9 @@ export async function importArtistAction(
 }
 
 export async function syncArtistAction(artistId: string) {
-  await syncArtist(artistId);
+  // Pressed on one artist's own page, which is the one moment a new photo is
+  // wanted and expected. The nightly sweep leaves pictures alone.
+  await syncArtist(artistId, { refreshImage: true });
   revalidatePath("/");
   revalidatePath(`/artists/${artistId}`);
 }
@@ -479,6 +492,53 @@ export async function updateRelease(formData: FormData) {
   revalidatePath("/");
   revalidatePath(`/releases/${releaseId}`);
   revalidatePath(`/artists/${release.artistId}`);
+}
+
+/**
+ * Shortlists a release, or takes it off the shortlist.
+ *
+ * Separate from the rating rather than derived from it: a rating says how good
+ * the record is, a favourite says it is one of the ones you would name. Those
+ * come apart often enough — a five-star record you rarely reach for, a rough
+ * early EP you love — that collapsing them would lose the answer to both.
+ */
+export async function setReleaseFavourite(releaseId: string, favourite: boolean) {
+  const release = await prisma.release.findUnique({
+    where: { id: releaseId },
+    select: { artistId: true },
+  });
+  if (!release) return;
+
+  await prisma.release.update({ where: { id: releaseId }, data: { favourite } });
+
+  revalidatePath(`/releases/${releaseId}`);
+  revalidatePath(`/artists/${release.artistId}`);
+}
+
+/**
+ * Picks a song out as a favourite of the release it is on, or unpicks it.
+ *
+ * The limit is enforced here as well as in the UI: the buttons past three are
+ * disabled, but a disabled button is a courtesy, not a rule.
+ */
+export async function setTrackFavourite(trackId: string, favourite: boolean) {
+  const track = await prisma.track.findUnique({
+    where: { id: trackId },
+    select: { releaseId: true, release: { select: { artistId: true } } },
+  });
+  if (!track) return;
+
+  if (favourite) {
+    const picked = await prisma.track.count({
+      where: { releaseId: track.releaseId, favourite: true },
+    });
+    if (picked >= MAX_FAVOURITE_SONGS) return;
+  }
+
+  await prisma.track.update({ where: { id: trackId }, data: { favourite } });
+
+  revalidatePath(`/releases/${track.releaseId}`);
+  revalidatePath(`/artists/${track.release.artistId}`);
 }
 
 /** Sends the same rating twice to clear it, so one control both sets and unsets. */

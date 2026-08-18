@@ -35,6 +35,9 @@ const ARTISTS = [
   { id: 505, name: "Test Ensemble", picture_medium: `${SELF}/img/ensemble`, nb_album: 1 },
 ];
 
+/** Pictures changed since, keyed by artist id. Set through /control/new-picture. */
+const newPictures = {};
+
 const album = (id, title, date, type) => ({
   id,
   title,
@@ -105,6 +108,14 @@ const TRACKS = {
   3001: [
     { id: 91, title: "Sault One", duration: 220, track_position: 1, isrc: "CCC000000091" },
   ],
+  // Four songs, which is one more than the favourites limit — the only release
+  // here long enough to test what happens at the limit.
+  4004: [
+    { id: 101, title: "Ensemble I", duration: 200, track_position: 1, isrc: "DDD000000101" },
+    { id: 102, title: "Ensemble II", duration: 210, track_position: 2, isrc: "DDD000000102" },
+    { id: 103, title: "Ensemble III", duration: 220, track_position: 3, isrc: "DDD000000103" },
+    { id: 104, title: "Ensemble IV", duration: 230, track_position: 4, isrc: "DDD000000104" },
+  ],
 };
 
 /**
@@ -166,6 +177,24 @@ createServer((req, res) => {
 
   let match = url.pathname.match(/^\/artist\/(\d+)\/albums$/);
   if (match) return json({ data: ALBUMS[match[1]] ?? [] });
+
+  /*
+   * Stands in for an artist changing their photo on the service. A test calls
+   * this, then presses "check for new releases" and expects the new one.
+   */
+  match = url.pathname.match(/^\/control\/new-picture\/(\d+)$/);
+  if (match) {
+    newPictures[match[1]] = `${SELF}/img/updated-${match[1]}`;
+    return json({ ok: true });
+  }
+
+  // After the albums route, or "/artist/399/albums" would match here first.
+  match = url.pathname.match(/^\/artist\/(\d+)$/);
+  if (match) {
+    const artist = ARTISTS.find((a) => String(a.id) === match[1]);
+    if (!artist) return json({ error: { message: "no such artist" } });
+    return json({ ...artist, picture_medium: newPictures[match[1]] ?? artist.picture_medium });
+  }
 
   match = url.pathname.match(/^\/album\/(\d+)\/tracks$/);
   if (match) return json({ data: TRACKS[match[1]] ?? [] });

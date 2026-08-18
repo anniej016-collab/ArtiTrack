@@ -201,6 +201,25 @@ body {
 }
 
 /*
+ * Favourite hearts on a tracklist.
+ *
+ * Hidden unless the song is actually a favourite. A tracklist should read as a
+ * list of songs, not as a form waiting to be filled in — and most releases will
+ * never have a favourite picked on them at all. The empty ones appear only
+ * while the release page is in picking mode, which is a deliberate press.
+ *
+ * The slot around each one keeps its width either way, so turning the mode on
+ * reveals the hearts without shunting every row sideways.
+ */
+.song-favourite {
+  display: none;
+}
+.song-favourite[data-on="true"],
+.picking-favourites .song-favourite {
+  display: flex;
+}
+
+/*
  * Cover-art buttons stay visible on touch screens, where there is no hover to
  * reveal them, and fade in on hover only where hovering is actually possible.
  */

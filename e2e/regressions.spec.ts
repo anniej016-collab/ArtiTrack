@@ -1,6 +1,14 @@
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
-import { addArtist, resetDatabase, resetPreferences } from "./helpers";
+import {
+  addArtist,
+  openArtist,
+  openRelease,
+  openReleasesTab,
+  resetDatabase,
+  resetPreferences,
+  runSql,
+} from "./helpers";
 
 /**
  * Clicks a row somewhere that carries no control of its own — the gap between
@@ -149,4 +157,85 @@ test("marking something heard now does record the date", async ({ page }) => {
 
   await page.getByRole("button", { name: "Mark heard" }).first().click();
   await expect(page.getByText(/^Heard \w+ \d+, \d{4}$/).first()).toBeVisible();
+});
+
+test("re-ticking a release you un-ticked by accident doesn't call it a new listen", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "not device-specific");
+
+  /*
+   * Shipped broken: un-marking a release cleared listenedAt along with the
+   * flag, so the date you heard it was destroyed by the un-tick and re-ticking
+   * stamped today. A record heard years ago reappeared at the top of "Recently
+   * listened", which is the one section that is supposed to mean something.
+   */
+  await addArtist(page, "Testhead", { heardAlready: false });
+
+  await page.goto("/");
+  await page
+    .locator("#to-listen li")
+    .first()
+    .getByRole("button", { name: /Mark heard|Heard/ })
+    .click();
+
+  // Backdate it: the only button available stamps today, and the bug is about
+  // what happens to a date from long ago.
+  await runSql(
+    `UPDATE "Release" SET "listenedAt" = TIMESTAMP '2020-03-04 12:00:00' WHERE listened = true`,
+  );
+
+  // A hard reload, not a client navigation: the date went in behind the app's
+  // back, so nothing has told Next to drop what it already rendered.
+  await openArtist(page, "Testhead");
+  const artistUrl = page.url();
+  await page.reload();
+  await expect(page.getByText("Heard Mar 4, 2020").first()).toBeVisible();
+
+  await openReleasesTab(page);
+  const heardBefore = await page.getByText("Heard Mar 4, 2020").count();
+  await openRelease(page, "In Testing");
+
+  await page.getByRole("button", { name: "Heard", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Mark heard", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Mark heard", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Heard", exact: true })).toBeVisible();
+
+  // The original date is back, not today's.
+  await page.goto(artistUrl);
+  await expect(page.getByText("Heard Mar 4, 2020")).toHaveCount(heardBefore);
+});
+
+test("an un-ticked release drops out of Recently listened", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "not device-specific");
+
+  /*
+   * Shipped broken alongside the above: the section asked only for a date, not
+   * for the release still being heard. Once the date stopped being erased, a
+   * release you had taken back off sat there as a recent listen.
+   */
+  await addArtist(page, "Testhead", { heardAlready: false });
+
+  await page.goto("/");
+  await page
+    .locator("#to-listen li")
+    .first()
+    .getByRole("button", { name: /Mark heard|Heard/ })
+    .click();
+
+  const recent = page.locator("#recently-listened li");
+  await expect(recent).toHaveCount(1);
+  const title = await recent.first().locator("a").first().innerText();
+
+  await openArtist(page, "Testhead");
+  await openReleasesTab(page);
+  await openRelease(page, title);
+  await page.getByRole("button", { name: "Heard", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Mark heard", exact: true })).toBeVisible();
+
+  await page.goto("/");
+  await expect(page.locator("#recently-listened li")).toHaveCount(0);
 });

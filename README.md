@@ -13,6 +13,11 @@ losing their history.
 - **New releases arrive on their own.** A scheduled job checks nightly, so the queue is
   up to date whenever you open the app. There are still buttons to check on demand. Re-syncing updates existing releases rather than duplicating
   them, and never overwrites what you've marked as listened.
+- **Checking one artist also refreshes their photo**, when the service has a newer one.
+  Only that button, never the nightly run: a library that quietly looks different every
+  morning is unsettling rather than helpful, and it would cost an extra request per
+  artist on the sweep that can least afford one. A photo you typed in yourself is never
+  replaced.
 - **Mark releases as listened.** Anything unlistened from an artist you follow sits in
   the **To listen** queue on the home page. Marking it clears it from the queue; you can
   always un-mark it.
@@ -43,11 +48,25 @@ losing their history.
   queue can be a list while your artists stay as cards.
 - **Every section previews two rows**, with "Show all" to expand and a chevron to
   collapse it entirely. Both stick between visits, so the home page stays a fixed length
-  however large the library grows. Sections lead with the most recent: newest releases,
-  most recently added artists, most recently paused. Card view shows album art for
+  however large the library grows. Release sections lead with the most recent; artists
+  are listed alphabetically, following and paused alike, because a follow list is looked
+  up by name. Card view shows album art for
   releases and photos for artists; list view is text-only. The choice is stored in a
   cookie, so the server renders the right layout straight away and it survives closing
   the tab.
+- **Pick out up to three favourite songs on a release.** Three is the point rather than
+  a technical limit — a shortlist that holds everything is just the tracklist again.
+  Fewer is fine and none at all is the normal state: a heart shows only where you gave
+  one, and the empty ones appear only while you press *Pick favourites*, so a tracklist
+  reads as a list of songs rather than a form waiting to be filled in. A favourite
+  belongs to the record rather than to the song, unlike being heard: a track can be the
+  highlight of the album and merely present on the greatest-hits.
+- **Shortlist an artist's records, and read them in rating order.** A favourite release
+  gets its own row at the top of the artist's page, above everything else, and vanishes
+  entirely when nothing is picked. Separately, once anything is rated the page offers
+  *Best rated* alongside *Newest* — unrated records sit at the end rather than at the
+  bottom of the scale, because no opinion is not nought out of five. Ratings show as
+  pips under the title in that view only, where they are what you are reading.
 - **Edit or delete a single release**, rate it out of five, and keep notes on it or on
   the artist. Notes sit at the top of the page they belong to, not behind an edit form.
   Deleting one release leaves the artist and everything else intact.
@@ -110,6 +129,12 @@ Being listened to and *when* you listened are stored separately. An imported bac
 catalogue is marked listened with **no date**, because the date of the import says
 nothing about when the music was actually heard. Only pressing the button records a
 date, so "Recently listened" shows genuine recent listens rather than an import.
+
+Un-ticking something keeps the date. The flag is what you say about a record; the date
+is what happened, and un-ticking says you were wrong about having heard it, not that
+the day it was heard on never existed. So re-ticking after an accidental un-tick puts
+the original date back rather than stamping today — which used to drop a record from
+years ago into "Recently listened" as though it had just been played.
 
 ## How it looks
 
@@ -217,6 +242,9 @@ where this project's regressions have been; unit tests could not have caught any
   identifies a *recording*, and a remaster is a different recording — which is exactly
   the case that needs folding. The cost is that two different songs sharing a name
   ("Intro" on three albums) fold together.
+- `Release.favourite` and `Track.favourite` are shortlists, not ratings. The release one
+  is unlimited and drives the row at the top of the artist page; the track one is capped
+  at three per release, enforced in `setTrackFavourite` as well as in the UI.
 - Listening state is `listened` (boolean) plus an optional `listenedAt`, on both releases
   and tracks. `listened` with a null `listenedAt` means "heard, date unknown" — the state
   an imported back catalogue lands in. Track and release listening are independent, so a
