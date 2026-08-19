@@ -19,8 +19,12 @@ test("says which database is live, and how much is in it", async ({ page }) => {
   await page.goto("/database");
   await expect(page.getByRole("heading", { name: "Database", level: 1 })).toBeVisible();
 
-  // Exactly one setting is the one being read.
-  await expect(page.getByText("in use", { exact: true })).toHaveCount(1);
+  // Exactly one setting is the one being read. Scoped to the list, because the
+  // advice below it mentions the badge by name.
+  const settings = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "What each setting points at" }),
+  });
+  await expect(settings.getByText("in use", { exact: true })).toHaveCount(1);
 
   // And it reports real contents, which is what proves it is the right one.
   await expect(page.getByText(/\d+ artists · \d+ releases/).first()).toBeVisible();
@@ -62,4 +66,22 @@ test("is behind the same door as everything else", async ({ page }) => {
   // rather than that it refuses — the refusing is unit-tested in auth.test.ts.
   await page.goto("/database");
   await expect(page).toHaveURL(/\/database$/);
+});
+
+test("what it says about the spares matches what it shows", async ({ page }) => {
+  /*
+   * The verdict said the spare settings were safe to remove while the section
+   * naming them only ever appeared for settings pointing at a *different*
+   * database — so in the ordinary case, several names for one place, the page
+   * promised guidance and then showed none of it. Someone took that at its
+   * word and went looking through a hosting dashboard for a box that could not
+   * appear.
+   */
+  await page.goto("/database");
+
+  const shown = await page.locator("body").innerText();
+  const promisesRemoval = /safe to remove|removing them is safe/i.test(shown);
+  const namesThem = shown.includes("The others");
+
+  expect(promisesRemoval && !namesThem).toBe(false);
 });

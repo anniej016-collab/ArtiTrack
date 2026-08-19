@@ -92,6 +92,8 @@ losing their history.
   every database setting the app can see, says which one it reads and which one
   schema updates go to, and reports how much is in each — so "is this the right
   database?" is answered by the app rather than by reading a hosting dashboard.
+  Several names for one database is the ordinary, healthy answer — a hosting provider
+  usually hands one over that way — and the page says so rather than urging a tidy-up.
   It exists because of an outage where the answer mattered and nothing could say it.
   Passwords are never shown.
 - **Download your data** as JSON from the link at the bottom of any page. What you've

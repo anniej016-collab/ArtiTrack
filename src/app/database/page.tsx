@@ -94,9 +94,17 @@ export default async function DatabasePage() {
 
   const distinct = new Set(probes.map((entry) => entry.identity));
   const live = probes.find((entry) => entry.inUse);
-  const spares = probes.filter(
-    (entry) => !entry.inUse && entry.identity !== live?.identity,
-  );
+  /*
+   * Every setting that isn't the one being read.
+   *
+   * This used to list only the ones naming a *different* database, which is
+   * backwards: those are the ones to be careful with. In the ordinary case —
+   * several names for one database — it listed nothing at all, directly under
+   * a sentence saying the spares were safe to remove. Promising guidance and
+   * then not giving it sends someone hunting through a hosting dashboard for a
+   * box that was never going to appear.
+   */
+  const others = probes.filter((entry) => !entry.inUse);
 
   return (
     <div className="flex flex-col gap-8">
@@ -128,8 +136,9 @@ export default async function DatabasePage() {
         ) : distinct.size === 1 ? (
           <p className="text-sm text-text">
             All {probes.length} settings point at the{" "}
-            <strong>same database</strong>. The spare ones are just other names
-            for one place, so removing them is safe.
+            <strong>same database</strong>, which is the healthy answer: they
+            are one place under several names, which is how a hosting provider
+            usually hands a database over. Nothing needs changing.
           </p>
         ) : (
           <p className="text-sm text-text">
@@ -171,16 +180,26 @@ export default async function DatabasePage() {
         </ul>
       </section>
 
-      {spares.length > 0 && (
+      {others.length > 0 && (
         <section className="panel px-5 py-4">
-          <h2 className="eyebrow mb-2">Safe to remove</h2>
-          <p className="text-sm text-muted">
-            {spares.map((spare) => spare.name).join(", ")} — nothing here reads{" "}
-            {spares.length === 1 ? "it" : "them"}. Remove{" "}
-            {spares.length === 1 ? "it" : "them"} one at a time, and check this
-            page still says <em>in use</em> against{" "}
-            <code className="text-text">{live?.name}</code> afterwards.
-          </p>
+          <h2 className="eyebrow mb-2">The others</h2>
+          <ul className="flex flex-col gap-1.5">
+            {others.map((entry) => (
+              <li key={entry.name} className="text-sm text-muted">
+                <code className="text-text">{entry.name}</code> —{" "}
+                {entry.identity === live?.identity
+                  ? "another name for the same database. Nothing reads it, and it is almost certainly the hosting provider's, so it is better left where it is than tidied away."
+                  : "a different database. Nothing reads it, but deleting the setting does not delete what is in it — check that before assuming it is spare."}
+              </li>
+            ))}
+          </ul>
+          {live && (
+            <p className="mt-3 text-xs text-faint">
+              If you do remove one, remove it on its own and reload this page:
+              it should still say <em>in use</em> against{" "}
+              <code className="text-muted">{live.name}</code>.
+            </p>
+          )}
         </section>
       )}
     </div>
