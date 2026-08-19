@@ -106,9 +106,12 @@ test("the filter is remembered across a reload", async ({ page }) => {
   await page.goto("/");
 
   await chip(page, "Singles").click();
-  // Settled before reloading, or the reload races the action that writes the
-  // cookie and the test measures nothing.
-  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "true");
+  /*
+   * Settled before reloading, or the reload races the action that writes the
+   * cookie and the test measures nothing. The chip's own state fills in
+   * optimistically, so the queue narrowing is what says the server has it.
+   */
+  await expect(page.locator("#to-listen").getByText("Album", { exact: true })).toHaveCount(0);
 
   await page.reload();
   await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "true");
@@ -126,7 +129,12 @@ test("picking a kind the queue hasn't got says so rather than looking empty", as
 
   const queue = page.locator("#to-listen");
   await chip(page, "Albums").click();
-  await expect(chip(page, "Albums")).toHaveAttribute("aria-pressed", "true");
+  /*
+   * Waiting on the queue rather than on the chip. The chip fills in the moment
+   * it is pressed, before the server has been told, so it is no longer proof
+   * that the filter has landed — the queue narrowing is.
+   */
+  await expect(queue.locator("li")).toHaveCount(1);
 
   // Tick the only album off, and the filter now matches nothing.
   await queue.locator("li").first().getByRole("button", { name: /Mark heard|Heard/ }).click();

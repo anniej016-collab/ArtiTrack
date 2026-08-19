@@ -159,6 +159,12 @@ playing it, and ticking it off again takes longer than any mistake does. Keeping
 the date was not enough on its own, because the records it went wrong on were exactly
 the ones that never had one.
 
+Every control is a form posting to the server, so a tap costs a round trip before
+anything is saved. The controls don't wait for it: a tick, a heart, a star or a filter
+chip shows the state it is heading for the moment it is pressed, and refuses a second
+press until the first lands. Nothing moving was what made a slow tap read as a broken
+one — and pressing again while the first was still going could undo it.
+
 ## How it looks
 
 Electric violet, paired with a bright teal rather than the magenta every streaming

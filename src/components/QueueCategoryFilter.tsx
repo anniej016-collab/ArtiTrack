@@ -1,3 +1,6 @@
+"use client";
+
+import { useOptimistic } from "react";
 import { clearQueueFilter, toggleQueueCategory } from "@/lib/actions";
 import {
   CATEGORY_LABELS,
@@ -21,11 +24,17 @@ import type { SelectedCategories } from "@/lib/view-mode";
  */
 export function QueueCategoryFilter({
   counts,
-  selected,
+  selected: fromServer,
 }: {
   counts: Map<ReleaseCategory, number>;
   selected: SelectedCategories;
 }) {
+  /*
+   * Pressing a chip refilters the queue on the server, so the chip itself would
+   * otherwise sit unchanged for as long as that takes — long enough to be
+   * pressed again, which un-presses it. It fills in on press instead.
+   */
+  const [selected, setSelected] = useOptimistic(fromServer);
   /*
    * Every kind in the queue, plus any that is selected but no longer in it.
    *
@@ -49,7 +58,17 @@ export function QueueCategoryFilter({
         const lower = label.toLowerCase();
 
         return (
-          <form key={category} action={toggleQueueCategory.bind(null, category)}>
+          <form
+            key={category}
+            action={async () => {
+              setSelected(
+                on
+                  ? selected.filter((value) => value !== category)
+                  : [...selected, category],
+              );
+              await toggleQueueCategory(category);
+            }}
+          >
             <button
               type="submit"
               aria-pressed={on}
@@ -78,7 +97,12 @@ export function QueueCategoryFilter({
       })}
 
       {selected.length > 0 && (
-        <form action={clearQueueFilter}>
+        <form
+          action={async () => {
+            setSelected([]);
+            await clearQueueFilter();
+          }}
+        >
           <button
             type="submit"
             className="rounded-full px-2 py-1 text-[0.7rem] font-medium text-faint transition hover:text-text"

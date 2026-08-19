@@ -1,3 +1,6 @@
+"use client";
+
+import { useOptimistic } from "react";
 import { setReleaseRating } from "@/lib/actions";
 import { STAR_COUNT, formatRating, starFill, type StarFill } from "@/lib/rating";
 
@@ -40,6 +43,11 @@ function Star({ fill, className = "" }: { fill: StarFill; className?: string }) 
  * The targets are 14px wide, which is below what a fingertip deserves, so the
  * row is taller than it needs to be to compensate — height is free here, and it
  * gives the tap somewhere to land vertically even if it drifts sideways.
+ *
+ * The whole row moves the moment you press, rather than after the server
+ * answers. Ten separate forms can't each work that out alone — the star you
+ * pressed knows, but the four beside it that also need to fill in do not — so
+ * the pending value is held here and handed down.
  */
 export function RatingStars({
   releaseId,
@@ -48,10 +56,12 @@ export function RatingStars({
   releaseId: string;
   rating: number | null;
 }) {
+  const [shown, setShown] = useOptimistic(rating);
+
   return (
     <div className="flex items-center gap-0.5" role="group" aria-label="Rating">
       {STARS.map((star) => {
-        const fill = starFill(star, rating);
+        const fill = starFill(star, shown);
         const halves = [star * 2 - 1, star * 2];
 
         return (
@@ -64,13 +74,19 @@ export function RatingStars({
             />
 
             {halves.map((value, index) => {
-              const isCurrent = rating === value;
+              // Pressing the current rating clears it, so that is what this
+              // press is heading for.
+              const isCurrent = shown === value;
+              const next = isCurrent ? null : value;
               const label = `${formatRating(value)} out of ${STAR_COUNT}`;
 
               return (
                 <form
                   key={value}
-                  action={setReleaseRating.bind(null, releaseId, value)}
+                  action={async () => {
+                    setShown(next);
+                    await setReleaseRating(releaseId, value);
+                  }}
                   /* Only one position utility per element: pairing `relative`
                      with `absolute` lets `relative` win, since Tailwind emits it
                      later, and the halves drop out of the star entirely. */
@@ -89,9 +105,9 @@ export function RatingStars({
         );
       })}
 
-      {rating !== null && (
+      {shown !== null && (
         <span className="ml-1.5 text-xs text-faint">
-          {formatRating(rating)}/{STAR_COUNT}
+          {formatRating(shown)}/{STAR_COUNT}
         </span>
       )}
     </div>

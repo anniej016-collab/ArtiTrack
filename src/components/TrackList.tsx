@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { SongTickButton, FavouriteHeartButton } from "@/components/TrackButtons";
 import { setSongListened, setTrackFavourite } from "@/lib/actions";
-import { CheckIcon, HeartIcon, PlusIcon } from "@/components/icons";
+
 
 export type TrackRow = {
   id: string;
@@ -31,31 +32,9 @@ function SongToggle({
   // Named after the song it belongs to: a column of a dozen buttons all
   // announcing "Mark heard" gives a screen reader no way to tell them apart,
   // and reads the same as the release-wide toggle sitting above them.
-  const name = song.listened ? `${title}, heard` : `Mark ${title} heard`;
-
   return (
     <form action={setSongListened.bind(null, song.id, !song.listened)}>
-      <button
-        type="submit"
-        aria-label={name}
-        aria-pressed={song.listened}
-        title={
-          song.listened
-            ? "Mark as not heard, everywhere this song appears"
-            : "Mark as heard, everywhere this song appears"
-        }
-        className={`flex size-7 shrink-0 items-center justify-center rounded-full transition ${
-          song.listened
-            ? "bg-success/15 text-success ring-1 ring-inset ring-success/25 hover:bg-success/25"
-            : "border border-line text-faint hover:bg-panel-hover hover:text-text"
-        }`}
-      >
-        {song.listened ? (
-          <CheckIcon className="size-3.5" />
-        ) : (
-          <PlusIcon className="size-3.5" />
-        )}
-      </button>
+      <SongTickButton listened={song.listened} title={title} />
     </form>
   );
 }
@@ -75,39 +54,15 @@ function FavouriteToggle({
   track: TrackRow & { favourite: boolean };
   atLimit: boolean;
 }) {
-  // Nothing to press: three are already picked and this isn't one of them.
-  const spent = atLimit && !track.favourite;
-
   return (
     <span className="flex w-7 shrink-0 justify-center">
       <form action={setTrackFavourite.bind(null, track.id, !track.favourite)}>
-        <button
-          type="submit"
-          disabled={spent}
-          data-on={track.favourite ? "true" : "false"}
-          aria-label={
-            track.favourite
-              ? `${track.title}, a favourite on this release`
-              : `Make ${track.title} a favourite on this release`
-          }
-          aria-pressed={track.favourite}
-          title={
-            spent
-              ? `Three favourites already picked on this release`
-              : track.favourite
-                ? "Remove from favourites"
-                : "Make a favourite of this release"
-          }
-          className={`song-favourite size-7 items-center justify-center rounded-full transition ${
-            track.favourite
-              ? "text-accent hover:text-accent/70"
-              : spent
-                ? "cursor-not-allowed text-white/10"
-                : "text-white/25 hover:text-accent"
-          }`}
-        >
-          <HeartIcon className="size-4" filled={track.favourite} />
-        </button>
+        <FavouriteHeartButton
+          favourite={track.favourite}
+          // Nothing to press: three are already picked and this isn't one.
+          spent={atLimit && !track.favourite}
+          title={track.title}
+        />
       </form>
     </span>
   );
