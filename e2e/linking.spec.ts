@@ -26,6 +26,13 @@ async function importFile(page: import("@playwright/test").Page) {
   await expect(page.getByText(/Imported 3 releases/)).toBeVisible();
 }
 
+/**
+ * Whichever service leads the search is the one an artist gets linked to, and
+ * these tests are about linking rather than about which service that is. Named
+ * once so a change of order is one edit here, not nine.
+ */
+const LEADING_SERVICE = /checked against Spotify/;
+
 async function openTesthead(page: import("@playwright/test").Page) {
   await page.goto("/");
   await page.locator("#following").getByRole("link", { name: "Testhead" }).first().click();
@@ -43,7 +50,7 @@ test("an imported artist can be pointed at a service and then syncs", async ({ p
   await page.getByRole("button", { name: "This one" }).first().click();
 
   // Now watched, and it says where from without becoming a second artist.
-  await expect(page.getByText(/checked against Deezer/)).toBeVisible();
+  await expect(page.getByText(LEADING_SERVICE)).toBeVisible();
   await expect(page.getByRole("button", { name: /Check for new/ })).toBeVisible();
   await page.goto("/");
   await expect(page.locator("#following").getByText("Testhead")).toHaveCount(1);
@@ -55,7 +62,7 @@ test("syncing an imported artist doesn't list the same record twice", async ({ p
   await page.getByRole("button", { name: /Check for new releases automatically/ }).click();
   await page.getByRole("button", { name: "Search" }).click();
   await page.getByRole("button", { name: "This one" }).first().click();
-  await expect(page.getByText(/checked against Deezer/)).toBeVisible();
+  await expect(page.getByText(LEADING_SERVICE)).toBeVisible();
 
   // The file and the provider both carry "In Testing" — one row, not two.
   await expect(page.getByRole("link", { name: "In Testing" })).toHaveCount(1);
@@ -74,9 +81,9 @@ test("the file's own releases survive a sync that doesn't know them", async ({ p
   await page.getByRole("button", { name: /Check for new releases automatically/ }).click();
   await page.getByRole("button", { name: "Search" }).click();
   await page.getByRole("button", { name: "This one" }).first().click();
-  await expect(page.getByText(/checked against Deezer/)).toBeVisible();
+  await expect(page.getByText(LEADING_SERVICE)).toBeVisible();
 
-  // Deezer has never heard of this one; syncing must not remove it.
+  // The service has never heard of this one; syncing must not remove it.
   await expect(
     page.getByRole("link", { name: "Something Only The File Knows" }),
   ).toBeVisible();
@@ -90,7 +97,7 @@ test("re-importing after linking still doesn't duplicate", async ({ page }) => {
   await page.getByRole("button", { name: /Check for new releases automatically/ }).click();
   await page.getByRole("button", { name: "Search" }).click();
   await page.getByRole("button", { name: "This one" }).first().click();
-  await expect(page.getByText(/checked against Deezer/)).toBeVisible();
+  await expect(page.getByText(LEADING_SERVICE)).toBeVisible();
 
   // The two routes to the same record must not fight each other.
   await page.goto("/import");
@@ -118,7 +125,7 @@ test("an artist added from a service is watched from the start", async ({ page }
   await page.locator("#following").getByRole("link", { name: "Test Sault" }).first().click();
   await page.waitForURL(/\/artists\//);
 
-  await expect(page.getByText(/Releases come from Deezer/)).toBeVisible();
+  await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Check for new releases automatically/ }),
   ).toHaveCount(0);
@@ -151,9 +158,9 @@ test("an OST the file classifies is still matched to the service", async ({ page
   await page.getByRole("button", { name: /Check for new releases automatically/ }).click();
   await page.getByRole("button", { name: "Search" }).click();
   await page.getByRole("button", { name: "This one" }).first().click();
-  await expect(page.getByText(/checked against Deezer/)).toBeVisible();
+  await expect(page.getByText(LEADING_SERVICE)).toBeVisible();
 
-  // Deezer lists "Spectre Test" as a single; the file calls it an OST. One row.
+  // The service lists "Spectre Test" as a single; the file calls it an OST. One row.
   await expect(page.getByRole("link", { name: "Spectre Test" })).toHaveCount(1);
 
   // And the file's classification is what's kept, not the service's.
@@ -173,7 +180,7 @@ test("a matched OST's songs fold in with the rest of the artist's", async ({ pag
   await page.getByRole("button", { name: /Check for new releases automatically/ }).click();
   await page.getByRole("button", { name: "Search" }).click();
   await page.getByRole("button", { name: "This one" }).first().click();
-  await expect(page.getByText(/checked against Deezer/)).toBeVisible();
+  await expect(page.getByText(LEADING_SERVICE)).toBeVisible();
 
   await page.getByRole("link", { name: "Spectre Test" }).click();
   await page.waitForURL(/\/releases\//);
