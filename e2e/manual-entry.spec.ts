@@ -117,12 +117,18 @@ test("hand-entered songs count as heard everywhere, same as fetched ones", async
   await openArtist(page, "Hand Label");
   const artistUrl = page.url();
 
-  // Two releases sharing a song, both typed in.
+  /*
+   * Two releases sharing a song, both typed in, both unheard — the box is
+   * ticked by default. Left ticked, the songs would arrive already heard along
+   * with the release that carries them, which is correct but is a different
+   * rule from the one under test here.
+   */
   for (const title of ["Record One", "Record Two"]) {
     await page.goto(artistUrl);
     await page.getByText("Log a release by hand").click();
     await page.fill('input[name="title"]', title);
     await page.fill('input[name="releaseDate"]', "2026-03-01");
+    await page.uncheck('input[name="markListened"]');
     await page.getByRole("button", { name: "Log release" }).click();
     await page.waitForURL(/\/releases\//);
   }
@@ -184,4 +190,46 @@ test("notes on an artist sit under the hero, not at the foot of the page", async
   const notesBox = (await notes.boundingBox())!;
   const releases = (await page.getByRole("link", { name: /Releases ·/ }).boundingBox())!;
   expect(notesBox.y).toBeLessThan(releases.y);
+});
+
+test("a release logged by hand is heard already, with no date", async ({ page }) => {
+  /*
+   * Shipped without the choice: a record logged by hand always landed unheard,
+   * so documenting something you own meant ticking it heard afterwards — which
+   * dates it today and puts a record from years ago at the top of "Recently
+   * listened". The artist search has offered this since the beginning; the
+   * by-hand form did not.
+   */
+  await addByHand(page, "Hand Artist");
+  await openArtist(page, "Hand Artist");
+
+  await page.getByText("Log a release by hand").click();
+  await page.fill('input[name="title"]', "Old Favourite");
+  await page.fill('input[name="releaseDate"]', "2015-06-01");
+  await page.getByRole("button", { name: "Log release" }).click();
+  await page.waitForURL(/\/releases\//);
+
+  // Heard on arrival, so it never enters the queue...
+  await expect(page.getByRole("button", { name: "Heard", exact: true })).toBeVisible();
+  await page.goto("/");
+  await expect(page.locator("#to-listen").getByText("Old Favourite")).toHaveCount(0);
+
+  // ...and undated, so it is not a recent listen.
+  await expect(page.locator("#recently-listened li")).toHaveCount(0);
+});
+
+test("logging something to listen to still works", async ({ page }) => {
+  await addByHand(page, "Hand Artist");
+  await openArtist(page, "Hand Artist");
+
+  await page.getByText("Log a release by hand").click();
+  await page.fill('input[name="title"]', "Not Heard Yet");
+  await page.fill('input[name="releaseDate"]', "2026-06-01");
+  await page.uncheck('input[name="markListened"]');
+  await page.getByRole("button", { name: "Log release" }).click();
+  await page.waitForURL(/\/releases\//);
+
+  await expect(page.getByRole("button", { name: "Mark heard", exact: true })).toBeVisible();
+  await page.goto("/");
+  await expect(page.locator("#to-listen").getByText("Not Heard Yet")).toBeVisible();
 });

@@ -96,6 +96,8 @@ export async function addRelease(formData: FormData) {
   const type = String(formData.get("type") ?? "OTHER") as ReleaseType;
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const coverUrl = imageField(formData, "coverUrl");
+  // Unchecked boxes are absent from FormData entirely.
+  const markListened = formData.get("markListened") !== null;
 
   if (!artistId || !title || !releaseDateRaw) return;
 
@@ -107,6 +109,11 @@ export async function addRelease(formData: FormData) {
       releaseDate: new Date(releaseDateRaw),
       notes,
       coverUrl,
+      // Heard, with no date — the same state an imported back catalogue lands
+      // in. The form knows you have heard it; it cannot know when, and today is
+      // the one answer that is certainly wrong.
+      listened: markListened,
+      listenedAt: null,
     },
   });
 

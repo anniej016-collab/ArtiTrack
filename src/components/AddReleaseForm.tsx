@@ -61,6 +61,25 @@ export function AddReleaseForm({ artistId }: { artistId: string }) {
           className="field w-full px-3 py-2 text-sm"
         />
       </div>
+      {/* Checked by default, and for the same reason the artist search box is:
+          a record you are logging by hand is usually one you already own and
+          have heard, and the alternative — tick it heard afterwards — records
+          today as the day you heard it, which puts a record from years ago at
+          the top of "Recently listened". Heard here means heard with no date,
+          because when you actually heard it is not something this form knows. */}
+      <label
+        className="flex w-fit cursor-pointer items-center gap-1.5 text-xs text-muted transition-colors hover:text-text"
+        title="Log it as already heard, without recording today as the date"
+      >
+        <input
+          type="checkbox"
+          name="markListened"
+          defaultChecked
+          className="size-3.5 shrink-0 cursor-pointer accent-violet-500"
+        />
+        Heard already
+      </label>
+
       <p className="text-xs text-faint">
         You&apos;ll land on the release itself, where the songs can be typed in.
       </p>

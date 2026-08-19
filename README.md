@@ -152,6 +152,11 @@ losing their history.
   button to clear those in one go. Nothing is dropped automatically: matching is by name,
   which is sound enough to point at something but not to delete it behind your back.
 
+A release logged by hand offers the same **"Heard already"**, ticked by default, and
+means the same thing: heard, with no date. Logging a record you own is documenting
+something you heard years ago, and the alternative — tick it heard afterwards — records
+today, which is the one date that is certainly wrong.
+
 When you add an artist, **"Heard already" is ticked by default** so their existing
 catalogue does not flood the To listen queue. Releases found by later syncs arrive
 unlistened, which is what makes the queue mean "new since I started following".
