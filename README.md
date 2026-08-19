@@ -204,6 +204,13 @@ header is a two-item nav, Library and Check out, with the current one filled in.
 
 ## Deploying to Vercel
 
+Migrations are applied by `scripts/migrate.mjs` rather than by calling
+`prisma migrate deploy` directly, which retries a connection that isn't answering
+yet. A hosted database that has been idle can refuse the first one while it wakes,
+and the build reaches for it before anything else — a deploy that was in every way
+fine once failed with `P1001`, having never got as far as compiling. A migration
+that is genuinely wrong still fails every attempt and still fails the build.
+
 The build command is pinned in `vercel.json` to `npm run build`, and that is
 load-bearing: `prisma migrate deploy` lives in that script, so a Build Command
 set in the Vercel dashboard replaces it silently and ships an app whose schema
