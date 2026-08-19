@@ -28,7 +28,17 @@ export type SyncResult = {
 export async function persistReleases(
   artistId: string,
   releases: ProviderRelease[],
-  { markListened }: { markListened: boolean },
+  {
+    markListened,
+    /**
+     * Whether anything found here is turning up *after* you started following,
+     * as opposed to arriving with the artist.
+     *
+     * Only the caller knows: a first import and a later sync create rows the
+     * same way, and nothing about a row says which it was afterwards.
+     */
+    newArrival = false,
+  }: { markListened: boolean; newArrival?: boolean },
 ): Promise<SyncResult> {
   const existing = await prisma.release.findMany({
     where: { artistId },
@@ -107,6 +117,7 @@ export async function persistReleases(
         coverUrl: release.coverUrl,
         listened: markListened,
         listenedAt: null,
+        arrivedAt: newArrival ? new Date() : null,
       },
     });
     added += 1;
@@ -123,7 +134,16 @@ export async function persistReleases(
  */
 export async function syncArtist(
   artistId: string,
-  { refreshImage = false }: { refreshImage?: boolean } = {},
+  {
+    refreshImage = false,
+    /**
+     * Whether releases this finds count as having arrived while you were
+     * following. False for the very first check after pointing an artist at a
+     * service: what it turns up then is their back catalogue catching up, not
+     * news, however new it is to this app.
+     */
+    newArrival = true,
+  }: { refreshImage?: boolean; newArrival?: boolean } = {},
 ): Promise<SyncResult | null> {
   const artist = await prisma.artist.findUnique({
     where: { id: artistId },
@@ -147,6 +167,7 @@ export async function syncArtist(
   const releases = await provider.fetchArtistReleases(artist.syncExternalId);
   const result = await persistReleases(artist.id, releases, {
     markListened: false,
+    newArrival,
   });
 
   await prisma.artist.update({

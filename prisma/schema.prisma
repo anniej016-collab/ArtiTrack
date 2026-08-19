@@ -95,6 +95,24 @@ model Release {
   /// decade-old record into "Recently listened".
   unheardAt DateTime?
 
+  /// Set when a release turned up *after* you were already following the
+  /// artist, rather than arriving with them.
+  ///
+  /// The distinction cannot be recovered later: a release created a minute
+  /// after the artist and one created a year after look the same on a
+  /// timestamp, and an imported artist pointed at a service later muddies it
+  /// further. So it is recorded at the moment it is known — by the sync that
+  /// found it, which is the only code that can tell.
+  arrivedAt DateTime?
+
+  /// The first time this was on screen, which is when its fortnight as a new
+  /// release starts counting.
+  ///
+  /// Not the arrival date: away for three months, everything that landed would
+  /// have aged out before it was ever seen, which is exactly backwards — the
+  /// point of the flag is to catch you up on what you missed.
+  firstSeenAt DateTime?
+
   /// Deliberately not planned for, without claiming to have heard it.
   ///
   /// A third state is needed because the other two both say the wrong thing

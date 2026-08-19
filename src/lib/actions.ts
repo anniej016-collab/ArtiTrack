@@ -229,7 +229,10 @@ export async function linkArtistForSync(
     },
   });
 
-  await syncArtist(artistId);
+  // The first check after attaching a service is their back catalogue arriving
+  // late, not new releases — flagging a twenty-year discography as news would
+  // make the New releases group useless the moment it was created.
+  await syncArtist(artistId, { newArrival: false });
 
   revalidatePath("/", "layout");
 }

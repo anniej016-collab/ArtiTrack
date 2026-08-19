@@ -36,6 +36,7 @@ import { isSyncableSource } from "@/lib/providers";
 import { groupReleases } from "@/lib/grouping";
 import { formatDate } from "@/lib/format";
 import { byName } from "@/lib/name-order";
+import { isNewRelease } from "@/lib/newness";
 
 /** Grouping only helps if the queue isn't silently truncated first. */
 const TO_LISTEN_LIMIT = 200;
@@ -305,6 +306,26 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const activeArtists = byName(unsortedActive, (artist) => artist.name);
   const pausedArtists = byName(unsortedPaused, (artist) => artist.name);
 
+  /*
+   * Start the clock on anything being seen for the first time.
+   *
+   * A write while rendering, which is not usually the done thing, but "first
+   * seen" cannot be recorded anywhere else — there is no event for looking at
+   * something. Only rows that have never been stamped are touched, so it is a
+   * no-op on almost every visit, and the value it writes is read on the *next*
+   * one: a release is new on the visit that reveals it either way.
+   */
+  const now = new Date();
+  const unseen = queueCandidates.filter(
+    (release) => release.arrivedAt !== null && release.firstSeenAt === null,
+  );
+  if (unseen.length > 0) {
+    await prisma.release.updateMany({
+      where: { id: { in: unseen.map((release) => release.id) }, firstSeenAt: null },
+      data: { firstSeenAt: now },
+    });
+  }
+
   // Counts describe the whole queue, not what survives the filter, so a chip
   // keeps its number and stays clickable whichever way it is switched.
   const categoryCounts = countByCategory(queueCandidates);
@@ -314,6 +335,15 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       releaseCategory(release.title, release.type, release.category),
     ),
   );
+
+  // Two groups rather than a badge alone: a fortnight-old arrival should stop
+  // shouting *and* stop sitting above a backlog it is no longer ahead of.
+  const newReleases = toListen.filter((release) => isNewRelease(release, now));
+  const backCatalogue = toListen.filter((release) => !isNewRelease(release, now));
+
+  // Split only when there is something on both sides of it: a heading with no
+  // counterpart is a label, not a division.
+  const split = newReleases.length > 0 && backCatalogue.length > 0;
 
   const queuePreview = sectionStates["to-listen"] === "preview";
 
@@ -422,13 +452,18 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         count={toListenTotal}
         state={sectionStates["to-listen"]}
         canShowAll={
-          /* Grouped, the preview cuts groups rather than cards, so what decides
-             whether anything is held back is the number of groups — offering
-             "Show all" beside four folded headings, all of them already on
-             screen, is a button that does nothing when pressed. */
-          groupMode === "none"
-            ? canShowAll("to-listen", toListen.length)
-            : groupReleases(toListen, groupMode).length > PREVIEW_GROUPS
+          /* Whatever the preview actually cuts decides this, and the three
+             layouts cut different things: one list of cards, two lists either
+             side of a split, or a run of folded groups. Offering "Show all"
+             when everything is already on screen is a button that does nothing
+             when pressed, which happened twice before this was worked out per
+             layout. */
+          groupMode !== "none"
+            ? groupReleases(toListen, groupMode).length > PREVIEW_GROUPS
+            : split
+              ? canShowAll("to-listen", newReleases.length) ||
+                canShowAll("to-listen", backCatalogue.length)
+              : canShowAll("to-listen", toListen.length)
         }
         controls={
           <>
@@ -461,11 +496,42 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             {toListen.length === 0 ? (
               <EmptyState message="Nothing in the queue of that kind." />
             ) : groupMode === "none" ? (
-              <ReleaseGroup
-                releases={toListen}
-                mode={viewModes["to-listen"]}
-                clamp={queuePreview}
-              />
+              /* Someone with no new arrivals — or nothing but — sees the plain
+                 list they see today, with no headings to read past. */
+              split ? (
+                <div className="flex flex-col gap-6">
+                  <div>
+                    <h3 className="eyebrow mb-2.5 flex items-center gap-2">
+                      New releases
+                      <span className="font-normal text-faint">{newReleases.length}</span>
+                    </h3>
+                    <ReleaseGroup
+                      releases={newReleases}
+                      mode={viewModes["to-listen"]}
+                      clamp={queuePreview}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="eyebrow mb-2.5 flex items-center gap-2">
+                      Back catalogue
+                      <span className="font-normal text-faint">
+                        {backCatalogue.length}
+                      </span>
+                    </h3>
+                    <ReleaseGroup
+                      releases={backCatalogue}
+                      mode={viewModes["to-listen"]}
+                      clamp={queuePreview}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <ReleaseGroup
+                  releases={toListen}
+                  mode={viewModes["to-listen"]}
+                  clamp={queuePreview}
+                />
+              )
             ) : (
               <div className="flex flex-col gap-5">
                 {/* In preview only the first few groups show, each itself

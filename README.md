@@ -39,6 +39,16 @@ losing their history.
   keeps it in the queue for good, and marking it heard is untrue. It drops out of the
   queue into its own **Set aside** section, where you can put it back or tick it off if
   you get to it after all. Nothing about it is permanent, and the songs are untouched.
+- **New releases are told apart from the backlog.** Anything a check finds after you
+  started following an artist is marked **New** and led with, under its own heading above
+  *Back catalogue* — so next month's album isn't buried in a discography you never got
+  round to. The fortnight it stays new is counted from the first time you see it, not
+  from when it arrived: three months away and nothing ages out while you're gone, so
+  everything that landed is waiting for you, each with its own fortnight from that visit.
+  A glance doesn't burn it either. Once the fortnight is up the badge goes and it drops
+  into the back catalogue, so the top of the queue stays genuinely new. Both headings
+  disappear when there is nothing on one side of the split, and a back catalogue is never
+  news however recently it was imported.
 - **Group the To listen queue** by artist or by release month, so it's clear whose
   backlog is stacking up. Groups start folded: grouping is for finding one artist or
   one month in a queue too long to scan, and opening every group at once just reprints
@@ -284,6 +294,11 @@ where this project's regressions have been; unit tests could not have caught any
 - `Release.rating` is in half-stars: a whole number from 1 to 10, where 7 is three and a
   half. Stored doubled rather than as a decimal, because the scale has exactly ten
   positions and an integer cannot land between two of them.
+- `Release.arrivedAt` is set only by a sync of an artist already being followed, which is
+  the one moment "this is new" is knowable — a row created a minute after the artist and
+  one created a year after look identical on a timestamp. `Release.firstSeenAt` is
+  stamped the first time it renders, and starts its fortnight. `src/lib/newness.ts` holds
+  the rule.
 - `Release.unheardAt` records when something was last un-ticked, which is what lets a
   re-tick be read as an undo rather than a listen. `src/lib/listen-dates.ts` holds that
   rule on its own so it can be tested without a database.

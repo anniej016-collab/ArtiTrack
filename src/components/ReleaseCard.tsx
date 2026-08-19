@@ -5,6 +5,7 @@ import { ReleaseTypeBadge } from "@/components/ReleaseTypeBadge";
 import { CoverPlaceholder, HeartIcon } from "@/components/icons";
 import { formatDate } from "@/lib/format";
 import { STAR_COUNT, formatRating } from "@/lib/rating";
+import { isNewRelease } from "@/lib/newness";
 
 export type ReleaseCardData = {
   id: string;
@@ -18,6 +19,8 @@ export type ReleaseCardData = {
   setAside: boolean;
   rating?: number | null;
   favourite?: boolean;
+  arrivedAt?: Date | null;
+  firstSeenAt?: Date | null;
   artistId: string;
   artist?: { name: string };
 };
@@ -111,6 +114,21 @@ export function ReleaseCard({
               setAside={release.setAside}
               variant="overlay"
             />
+          </div>
+        )}
+
+        {/* Bottom-right, the last free corner. Says why this one is above the
+            rest of the queue, and goes quiet with the split it explains. */}
+        {isNewRelease(
+          { arrivedAt: release.arrivedAt ?? null, firstSeenAt: release.firstSeenAt ?? null },
+          new Date(),
+        ) && (
+          <div
+            className={`absolute z-10 rounded-full bg-accent px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-on-accent ${
+              compact ? "bottom-1.5 right-1.5" : "bottom-2 right-2"
+            }`}
+          >
+            New
           </div>
         )}
 
