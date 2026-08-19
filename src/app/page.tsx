@@ -34,6 +34,7 @@ import { countByCategory, releaseCategory } from "@/lib/release-category";
 import { isSyncableSource } from "@/lib/providers";
 import { groupReleases } from "@/lib/grouping";
 import { formatDate } from "@/lib/format";
+import { byName } from "@/lib/name-order";
 
 /** Grouping only helps if the queue isn't silently truncated first. */
 const TO_LISTEN_LIMIT = 200;
@@ -239,8 +240,8 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     viewModes,
     sectionStates,
     groupMode,
-    activeArtists,
-    pausedArtists,
+    unsortedActive,
+    unsortedPaused,
     queueCandidates,
     toListenTotal,
     recentlyListened,
@@ -253,17 +254,11 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       // Alphabetical, because this is the list you come back to. A follow list
       // is looked up by name — recency only helps in the minute after adding
       // someone, and costs you a stable place to find everyone else.
-      prisma.artist.findMany({
-        where: { status: "ACTIVE" },
-        orderBy: { name: "asc" },
-        select: artistSelect,
-      }),
-      // Alphabetical too, so both artist lists read the same way.
-      prisma.artist.findMany({
-        where: { status: "PAUSED" },
-        orderBy: { name: "asc" },
-        select: artistSelect,
-      }),
+      //
+      // Ordered after reading rather than in SQL: see byName. Both lists are
+      // read whole, so sorting here loses nothing.
+      prisma.artist.findMany({ where: { status: "ACTIVE" }, select: artistSelect }),
+      prisma.artist.findMany({ where: { status: "PAUSED" }, select: artistSelect }),
       prisma.release.findMany({
         where: queueWhere,
         orderBy: { releaseDate: "desc" },
@@ -298,6 +293,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       }),
       prisma.release.count({ where: { listened: true } }),
     ]);
+
+  const activeArtists = byName(unsortedActive, (artist) => artist.name);
+  const pausedArtists = byName(unsortedPaused, (artist) => artist.name);
 
   // Counts describe the whole queue, not what survives the filter, so a chip
   // keeps its number and stays clickable after you switch it off.

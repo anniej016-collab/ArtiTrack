@@ -2,17 +2,20 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ImportDiscography } from "@/components/ImportDiscography";
 import { IMPORT_SOURCE } from "@/lib/import/apply";
+import { byName } from "@/lib/name-order";
 
 export const dynamic = "force-dynamic";
 // A few hundred releases is well inside this, but the default is not generous.
 export const maxDuration = 60;
 
 export default async function ImportPage() {
-  const imported = await prisma.artist.findMany({
+  const unsorted = await prisma.artist.findMany({
     where: { source: IMPORT_SOURCE },
-    orderBy: { name: "asc" },
     select: { id: true, name: true, _count: { select: { releases: true } } },
   });
+  // Ordered here rather than in SQL, so a lowercase name lands under its own
+  // letter instead of after every capitalised one. See byName.
+  const imported = byName(unsorted, (artist) => artist.name);
 
   return (
     <div className="flex flex-col gap-8">

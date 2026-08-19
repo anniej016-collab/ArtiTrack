@@ -1,3 +1,4 @@
+import { compareNames } from "@/lib/name-order";
 export type GroupMode = "none" | "artist" | "date";
 
 type Groupable = {
@@ -50,9 +51,7 @@ export function groupReleases<T extends Groupable>(
       });
     }
 
-    return [...byArtist.values()].sort((a, b) =>
-      a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
-    );
+    return [...byArtist.values()].sort((a, b) => compareNames(a.label, b.label));
   }
 
   // Only qualify months with a year when the queue actually spans more than one,

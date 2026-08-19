@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { byName } from "@/lib/name-order";
 
 /**
  * Everything in the tracker as one JSON file.
@@ -12,8 +13,9 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const artists = await prisma.artist.findMany({
-    orderBy: { name: "asc" },
+  const unsorted = await prisma.artist.findMany({
+    // No SQL ordering: a lowercase name would sort after every capitalised one
+    // under the C collation. Sorted below, the way the app displays it.
     include: {
       releases: {
         orderBy: { releaseDate: "desc" },
@@ -22,6 +24,7 @@ export async function GET() {
       songs: { orderBy: { title: "asc" } },
     },
   });
+  const artists = byName(unsorted, (artist) => artist.name);
 
   // Hand-entered too, and nowhere else to get it back from.
   const discoveries = await prisma.discovery.findMany({

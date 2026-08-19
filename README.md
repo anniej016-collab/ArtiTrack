@@ -50,7 +50,8 @@ losing their history.
   collapse it entirely. Both stick between visits, so the home page stays a fixed length
   however large the library grows. Release sections lead with the most recent; artists
   are listed alphabetically, following and paused alike, because a follow list is looked
-  up by name. Card view shows album art for
+  up by name — and alphabetically as a person reads it, so **aespa** sits under A rather
+  than after every capitalised name, which is where sorting by byte value puts it. Card view shows album art for
   releases and photos for artists; list view is text-only. The choice is stored in a
   cookie, so the server renders the right layout straight away and it survives closing
   the tab.

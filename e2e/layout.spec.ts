@@ -151,3 +151,36 @@ test("a preview sends only the cards a preview can show", async ({ page }, testI
     .poll(async () => page.locator("#to-listen li").count())
     .toBeGreaterThan(12);
 });
+
+test("a lowercase name sits under its own letter, not after everyone", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "not device-specific");
+
+  /*
+   * Shipped broken: ordering was left to the database, which under the C
+   * collation compares byte values — every capital sorts before every
+   * lowercase letter, so Z came before a. A follow list of mostly capitalised
+   * names dumped "aespa" and "twice" in a clump at the end, nowhere near the
+   * letter they start with.
+   */
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await runSql(`
+    INSERT INTO "Artist" (id, name, status, source, "createdAt")
+    VALUES ('lower1', 'aespa', 'ACTIVE', 'manual', now()),
+           ('lower2', 'twice', 'ACTIVE', 'manual', now()),
+           ('upper1', 'Zara', 'ACTIVE', 'manual', now())
+  `);
+
+  await page.goto("/");
+  const names = await page
+    .locator("#following li a[href^='/artists/']")
+    .allTextContents();
+
+  expect(names.map((name) => name.trim())).toEqual([
+    "aespa",
+    "Testhead",
+    "twice",
+    "Zara",
+  ]);
+});
