@@ -72,3 +72,30 @@ describe("a stated category", () => {
     expect(releaseCategory("Kid A", "ALBUM", null)).toBe("album");
   });
 });
+
+describe("EPs, which not every source has a type for", () => {
+  it("reads EP off the title when the provider calls it something else", () => {
+    // Spotify delivers EPs as singles or albums — it has no EP type at all —
+    // so without this every EP in a Spotify-sourced library reads as a single.
+    expect(releaseCategory("Testbag EP", "SINGLE")).toBe("ep");
+    expect(releaseCategory("Testbag EP", "ALBUM")).toBe("ep");
+    expect(releaseCategory("Testbag E.P.", "SINGLE")).toBe("ep");
+  });
+
+  it("still trusts a provider that does have the type", () => {
+    expect(releaseCategory("No Word In The Title", "EP")).toBe("ep");
+  });
+
+  it("doesn't see EP inside another word", () => {
+    expect(releaseCategory("Step Into The Light", "ALBUM")).toBe("album");
+    expect(releaseCategory("Epic", "ALBUM")).toBe("album");
+    expect(releaseCategory("Sleep", "ALBUM")).toBe("album");
+  });
+
+  it("lets what a record is beat how long it is", () => {
+    expect(releaseCategory("Live EP", "SINGLE")).toBe("live");
+    expect(releaseCategory("Best Of EP", "SINGLE")).toBe("compilation");
+    // But a packaging note doesn't: a deluxe EP is still an EP.
+    expect(releaseCategory("Testbag EP (Deluxe)", "SINGLE")).toBe("ep");
+  });
+});

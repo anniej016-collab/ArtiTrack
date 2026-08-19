@@ -230,7 +230,11 @@ createServer((req, res) => {
     return json({
       id: `sp-${artist.id}`,
       name: artist.name,
-      images: [{ url: `${SELF}/img/spotify-${artist.id}` }],
+      // The same "changed their photo" control as the Deezer side, so the
+      // refresh test exercises whichever service the artist is actually on.
+      images: [
+        { url: newPictures[artist.id] ?? `${SELF}/img/spotify-${artist.id}` },
+      ],
     });
   }
 

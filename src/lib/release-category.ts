@@ -51,6 +51,18 @@ const TITLE_PATTERNS: [ReleaseCategory, RegExp][] = [
     "compilation",
     /greatest hits|\bbest of\b|\banthology\b|\bcollection\b|\bessentials?\b|\bcompilation\b|\bsingles\b|\bhits\b/,
   ],
+  /*
+   * EP has to be read off the title because not every source has the concept.
+   * Deezer types them outright; Spotify has three types and EP is not among
+   * them, so an EP arrives as a "single" or an "album" depending on how it was
+   * delivered — which would file every EP in the library under Singles. The
+   * word is in the title far more reliably than it is in the metadata.
+   *
+   * After the three above, which say what a record is rather than how long it
+   * is: a "Live EP" is a live record, and a "Best Of EP" is a compilation.
+   * Before deluxe and remaster, which describe a packaging rather than a form.
+   */
+  ["ep", /\bep\b|\be\.p\./],
   ["deluxe", /\bdeluxe\b|\bexpanded\b|\banniversary\b|special edition|\bbonus\b/],
   ["remaster", /\bre-?master(ed)?\b|\breissue\b|\b\d{4} (mix|version)\b/],
 ];
