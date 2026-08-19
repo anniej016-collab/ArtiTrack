@@ -349,7 +349,11 @@ export async function syncReleaseTracks(releaseId: string): Promise<number | nul
     data: { tracksSyncedAt: new Date() },
   });
 
-  await discardSongsWithoutTracks(release.artistId);
+  // Cleaning up is the caller's job, once, rather than this function's every
+  // time: run per release it was doing the same sweep of a whole artist's songs
+  // once for each of them, and doing it while its neighbours were still writing
+  // is what made the sweep dangerous in the first place.
+  //
   // An already-heard release means its songs have been heard, whenever they
   // happen to arrive.
   await alignSongsWithRelease(release.id);
@@ -397,8 +401,27 @@ async function resolveSong(artistId: string, title: string) {
  * Removes songs nothing points at any more, which re-folding can leave behind.
  * Songs are derived from tracks, so an empty one carries no information.
  */
-async function discardSongsWithoutTracks(artistId: string) {
-  await prisma.song.deleteMany({ where: { artistId, tracks: { none: {} } } });
+/**
+ * How long a song is left alone after being created, however orphaned it looks.
+ *
+ * Tracklists are fetched several releases at a time, and a song is created a
+ * moment before the track that points at it. Without a grace period one
+ * release's cleanup deletes a song another release is midway through attaching
+ * itself to — leaving a track with no song, which reads as "1 of 2 songs heard"
+ * for ever, on a song that can no longer be ticked. A minute is far longer than
+ * that window and far shorter than anything that matters: a genuine orphan is
+ * swept by the next fetch.
+ */
+const SONG_GRACE_MS = 60_000;
+
+export async function discardSongsWithoutTracks(artistId: string) {
+  await prisma.song.deleteMany({
+    where: {
+      artistId,
+      tracks: { none: {} },
+      createdAt: { lt: new Date(Date.now() - SONG_GRACE_MS) },
+    },
+  });
 }
 
 /** How many releases one "load songs" press will fetch. */
@@ -442,6 +465,9 @@ export async function syncArtistTracks(artistId: string): Promise<TrackBatchResu
       failed += 1;
     }
   });
+
+  // Once the batch has finished writing, never while it still is.
+  await discardSongsWithoutTracks(artistId);
 
   return { fetched, remaining: Math.max(0, pending.length - batch.length), failed };
 }

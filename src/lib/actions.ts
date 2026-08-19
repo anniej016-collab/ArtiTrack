@@ -32,6 +32,7 @@ import {
   syncAllActive,
   syncArtist,
   syncArtistTracks,
+  discardSongsWithoutTracks,
   syncReleaseTracks,
 } from "@/lib/sync";
 import {
@@ -452,7 +453,15 @@ export async function setSongListened(songId: string, listened: boolean) {
  * no songs.
  */
 export async function loadReleaseTracksAction(releaseId: string) {
+  const release = await prisma.release.findUnique({
+    where: { id: releaseId },
+    select: { artistId: true },
+  });
+
   await syncReleaseTracks(releaseId);
+  // Sweeping is the caller's job now. Safe here because this fetches one
+  // release and waits for it, so nothing else of this artist's is mid-write.
+  if (release) await discardSongsWithoutTracks(release.artistId);
   revalidatePath("/", "layout");
 }
 

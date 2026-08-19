@@ -324,6 +324,11 @@ where this project's regressions have been; unit tests could not have caught any
   `externalId`, `isrc`. Fetched on demand rather than during an artist sync, since one
   request per album would make importing a discography very slow.
   `Release.tracksSyncedAt` records which have been fetched.
+- Songs left behind by a changed tracklist are swept up after a fetch, but never within
+  a minute of being created. Tracklists are fetched several releases at a time and a song
+  is created a moment before the track pointing at it, so an unguarded sweep deleted songs
+  another release was midway through attaching itself to — leaving a track with no song,
+  which reads as "9 of 10 songs heard" for ever on a song that can no longer be ticked.
 - `Song` — a song independent of its releases, holding the listening state. Tracks are
   folded into one per artist by `src/lib/song-identity.ts`, which matches on a
   normalised title: qualifiers describing a repackaging (remaster, deluxe, bonus track,
