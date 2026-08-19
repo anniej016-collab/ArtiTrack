@@ -8,13 +8,13 @@ import {
   QUEUE_FILTER_COOKIE,
   SECTION_STATE_COOKIE,
   VIEW_MODE_COOKIE,
-  parseHiddenCategories,
+  parseSelectedCategories,
   parseSectionStates,
   parseViewModes,
-  serialiseHiddenCategories,
+  serialiseSelectedCategories,
   serialiseSectionStates,
   serialiseViewModes,
-  toggleHiddenCategory,
+  toggleSelectedCategory,
   type SectionKey,
   type SectionState,
   type ViewMode,
@@ -444,9 +444,9 @@ export async function setGroupMode(mode: GroupMode) {
   revalidatePath("/");
 }
 
-async function writeHiddenCategories(hidden: string) {
+async function writeSelectedCategories(selected: string) {
   const store = await cookies();
-  store.set(QUEUE_FILTER_COOKIE, hidden, {
+  store.set(QUEUE_FILTER_COOKIE, selected, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
@@ -456,14 +456,14 @@ async function writeHiddenCategories(hidden: string) {
 
 export async function toggleQueueCategory(category: ReleaseCategory) {
   const store = await cookies();
-  const current = parseHiddenCategories(store.get(QUEUE_FILTER_COOKIE)?.value);
-  await writeHiddenCategories(
-    serialiseHiddenCategories(toggleHiddenCategory(current, category)),
+  const current = parseSelectedCategories(store.get(QUEUE_FILTER_COOKIE)?.value);
+  await writeSelectedCategories(
+    serialiseSelectedCategories(toggleSelectedCategory(current, category)),
   );
 }
 
 export async function clearQueueFilter() {
-  await writeHiddenCategories("");
+  await writeSelectedCategories("");
 }
 
 export async function updateRelease(formData: FormData) {

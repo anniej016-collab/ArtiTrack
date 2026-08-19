@@ -23,9 +23,13 @@ losing their history.
   always un-mark it.
 - **Narrow the queue by what a release actually is.** Albums, EPs, singles, deluxe
   editions, remasters, compilations, soundtracks and live records each get a chip
-  with a count, and any of them can be switched off. Categories come from the title
-  as well as the provider's type, which only distinguishes four kinds. Only the
-  chips you actually have are shown. Long artist lists get a name filter.
+  with a count. Press one and the queue is that kind; press a second and it is both.
+  Nothing pressed means everything, so there is no "all" state to get stuck in.
+  Categories come from the title as well as the provider's type, which only
+  distinguishes four kinds. Only the chips you actually have are shown — plus any
+  you have pressed, which stays put even after its last release is ticked off, so a
+  filter can never be left on with nothing on screen to turn it off. Long artist
+  lists get a name filter.
 - **Hearing a release means hearing its songs**, and ticking off the last song
   completes the release. Because a song belongs to the artist rather than to one
   record, that reaches sideways too: hearing the deluxe edition completes the
@@ -36,8 +40,11 @@ losing their history.
   queue into its own **Set aside** section, where you can put it back or tick it off if
   you get to it after all. Nothing about it is permanent, and the songs are untouched.
 - **Group the To listen queue** by artist or by release month, so it's clear whose
-  backlog is stacking up. Month headings carry the year only when the queue spans more
-  than one.
+  backlog is stacking up. Groups start folded: grouping is for finding one artist or
+  one month in a queue too long to scan, and opening every group at once just reprints
+  that queue with headings in it. Folded, it reads as an index — names and counts, open
+  what you want — and a group you open stays open while you tick things off inside it.
+  Month headings carry the year only when the queue spans more than one.
 - **Hearing a song counts everywhere it appears.** The same song turns up as a single,
   on the album, on the deluxe edition and on a greatest-hits; ticking any one of them
   ticks them all, so nothing has to be marked off four times.

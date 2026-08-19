@@ -4,7 +4,7 @@ import {
   RELEASE_CATEGORIES,
   type ReleaseCategory,
 } from "@/lib/release-category";
-import type { HiddenCategories } from "@/lib/view-mode";
+import type { SelectedCategories } from "@/lib/view-mode";
 
 /**
  * One chip per kind of release actually in the queue, each carrying its count.
@@ -12,15 +12,31 @@ import type { HiddenCategories } from "@/lib/view-mode";
  * Only categories present are offered, so the row stays short and never asks
  * about something that would do nothing — a library with no soundtracks in it
  * never sees a soundtrack chip.
+ *
+ * Pressing a chip narrows the queue to that kind. It used to do the opposite —
+ * press "Albums" and everything but the albums remained — which is backwards
+ * from how a filter reads: you press the thing you want in order to be left
+ * with it. Several can be on at once, and none on means everything, so there is
+ * no separate "all" state to get stuck in.
  */
 export function QueueCategoryFilter({
   counts,
-  hidden,
+  selected,
 }: {
   counts: Map<ReleaseCategory, number>;
-  hidden: HiddenCategories;
+  selected: SelectedCategories;
 }) {
-  const present = RELEASE_CATEGORIES.filter((category) => counts.has(category));
+  /*
+   * Every kind in the queue, plus any that is selected but no longer in it.
+   *
+   * Ticking off the last album while filtered to albums would otherwise take
+   * the Albums chip away with it, leaving a filter switched on and nothing on
+   * screen to switch it off — the queue reads empty for a reason you can no
+   * longer see.
+   */
+  const present = RELEASE_CATEGORIES.filter(
+    (category) => counts.has(category) || selected.includes(category),
+  );
 
   // Nothing to choose between when everything is the same kind.
   if (present.length < 2) return null;
@@ -28,34 +44,40 @@ export function QueueCategoryFilter({
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {present.map((category) => {
-        const showing = !hidden.includes(category);
+        const on = selected.includes(category);
         const label = CATEGORY_LABELS[category];
+        const lower = label.toLowerCase();
 
         return (
           <form key={category} action={toggleQueueCategory.bind(null, category)}>
             <button
               type="submit"
-              aria-pressed={showing}
-              title={showing ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
-              /* Everything shows by default, so filling every chip in would
-                 light up the whole row and say nothing. What's switched off is
-                 the exception, so that is what's marked. */
+              aria-pressed={on}
+              title={
+                on
+                  ? `Stop showing ${lower}`
+                  : selected.length === 0
+                    ? `Show only ${lower}`
+                    : `Show ${lower} as well`
+              }
+              /* Filled means chosen. With nothing chosen the whole row sits
+                 quiet, which is honest: no filter is on. */
               className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[0.7rem] font-medium transition ${
-                showing
-                  ? "border-line text-text hover:border-accent/50"
-                  : "border-transparent bg-panel text-faint/70 line-through decoration-faint/50"
+                on
+                  ? "border-transparent bg-accent text-on-accent"
+                  : "border-line text-text hover:border-accent/50"
               }`}
             >
               {label}
-              <span className={showing ? "text-faint" : "text-faint/50"}>
-                {counts.get(category)}
+              <span className={on ? "text-on-accent/70" : "text-faint"}>
+                {counts.get(category) ?? 0}
               </span>
             </button>
           </form>
         );
       })}
 
-      {hidden.length > 0 && (
+      {selected.length > 0 && (
         <form action={clearQueueFilter}>
           <button
             type="submit"

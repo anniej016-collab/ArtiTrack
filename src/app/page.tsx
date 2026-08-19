@@ -24,7 +24,8 @@ import {
 import { VinylIcon } from "@/components/icons";
 import {
   getGroupMode,
-  getHiddenCategories,
+  getSelectedCategories,
+  isCategoryShown,
   getSectionStates,
   getViewModes,
   type SectionKey,
@@ -38,8 +39,15 @@ import { byName } from "@/lib/name-order";
 
 /** Grouping only helps if the queue isn't silently truncated first. */
 const TO_LISTEN_LIMIT = 200;
-/** Groups shown before "Show all", when the queue is grouped and previewed. */
-const PREVIEW_GROUPS = 2;
+/**
+ * Groups shown before "Show all", when the queue is grouped and previewed.
+ *
+ * Two was right when every group came open and each one printed its whole
+ * contents. Folded, a group is a single line, and two lines is a preview of
+ * nothing — the point of grouping is seeing which artists or months are
+ * stacking up, which needs enough of them to be worth reading.
+ */
+const PREVIEW_GROUPS = 8;
 
 // Always read live data, and keep the database out of the build step.
 export const dynamic = "force-dynamic";
@@ -227,7 +235,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     _count: { select: { releases: true } },
   } as const;
 
-  const hiddenCategories = await getHiddenCategories();
+  const selectedCategories = await getSelectedCategories();
   const queueWhere = {
     listened: false,
     // Set aside is a third answer to "am I going to play this": out of the
@@ -298,13 +306,13 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const pausedArtists = byName(unsortedPaused, (artist) => artist.name);
 
   // Counts describe the whole queue, not what survives the filter, so a chip
-  // keeps its number and stays clickable after you switch it off.
+  // keeps its number and stays clickable whichever way it is switched.
   const categoryCounts = countByCategory(queueCandidates);
-  const toListen = queueCandidates.filter(
-    (release) =>
-      !hiddenCategories.includes(
-        releaseCategory(release.title, release.type, release.category),
-      ),
+  const toListen = queueCandidates.filter((release) =>
+    isCategoryShown(
+      selectedCategories,
+      releaseCategory(release.title, release.type, release.category),
+    ),
   );
 
   const queuePreview = sectionStates["to-listen"] === "preview";
@@ -413,7 +421,15 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         title="To listen"
         count={toListenTotal}
         state={sectionStates["to-listen"]}
-        canShowAll={canShowAll("to-listen", toListen.length)}
+        canShowAll={
+          /* Grouped, the preview cuts groups rather than cards, so what decides
+             whether anything is held back is the number of groups — offering
+             "Show all" beside four folded headings, all of them already on
+             screen, is a button that does nothing when pressed. */
+          groupMode === "none"
+            ? canShowAll("to-listen", toListen.length)
+            : groupReleases(toListen, groupMode).length > PREVIEW_GROUPS
+        }
         controls={
           <>
             {syncableCount > 0 && <SyncAllButton />}
@@ -437,13 +453,13 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                   <GroupToggle current={groupMode} />
                 </div>
               )}
-              <QueueCategoryFilter counts={categoryCounts} hidden={hiddenCategories} />
+              <QueueCategoryFilter counts={categoryCounts} selected={selectedCategories} />
             </div>
 
             {/* Filtered down to nothing, which is a different situation from an
                 empty queue and needs the chips left in reach to undo. */}
             {toListen.length === 0 ? (
-              <EmptyState message="Nothing left once those kinds are hidden." />
+              <EmptyState message="Nothing in the queue of that kind." />
             ) : groupMode === "none" ? (
               <ReleaseGroup
                 releases={toListen}
@@ -452,14 +468,21 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               />
             ) : (
               <div className="flex flex-col gap-5">
-                {/* In preview only the first couple of groups show, each itself
+                {/* In preview only the first few groups show, each itself
                     clamped, so grouping can't reintroduce an endless section. */}
                 {groupReleases(toListen, groupMode)
                   .slice(0, queuePreview ? PREVIEW_GROUPS : undefined)
                   .map((group) => (
-                  // Open by default, but foldable: a long queue shouldn't push
-                  // the rest of the page out of reach.
-                  <details key={group.key} open className="group/fold">
+                  // Folded by default. Grouping is for finding one artist or
+                  // one month in a queue too long to scan, and opening every
+                  // group at once just reprints that queue with headings in
+                  // it — the scrolling the grouping was meant to save. Closed,
+                  // it reads as an index: names and counts, open what you want.
+                  //
+                  // Uncontrolled on purpose. React leaves an attribute it isn't
+                  // given alone, so a group you opened stays open when ticking
+                  // something off re-renders the page.
+                  <details key={group.key} className="group/fold">
                     <summary className="mb-2.5 flex cursor-pointer list-none items-baseline gap-2">
                       <span
                         aria-hidden="true"

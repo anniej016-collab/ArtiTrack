@@ -25,48 +25,80 @@ test("each kind of release gets its own chip, counted", async ({ page }) => {
   await expect(chip(page, "Soundtracks")).toHaveCount(0);
 });
 
-test("hiding one kind leaves the others alone", async ({ page }) => {
-  // The old three-way toggle failed exactly here: "no singles" also dropped
-  // compilations and everything else that wasn't an album or an EP.
+test("pressing a kind leaves you with that kind", async ({ page }) => {
+  /*
+   * Shipped backwards: the chips took a category away rather than picking it
+   * out, so pressing "Singles" showed everything except the single. A filter
+   * is pressed to be left with the thing you pressed.
+   */
   await addArtist(page, "Testhead", { heardAlready: false });
   await page.goto("/");
 
   const queue = page.locator("#to-listen");
   await expect(queue.getByText("Single", { exact: true })).toHaveCount(1);
+  await expect(queue.getByText("EP", { exact: true })).toHaveCount(1);
 
   await chip(page, "Singles").click();
+  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "true");
 
-  await expect(queue.getByText("Single", { exact: true })).toHaveCount(0);
-  // Everything else survives, which is the whole point.
-  await expect(chip(page, "EPs")).toHaveAttribute("aria-pressed", "true");
-  await expect(chip(page, "Compilations")).toHaveAttribute("aria-pressed", "true");
-  await expect(queue.getByText("EP", { exact: true })).toHaveCount(1);
+  // The single, and nothing else.
+  await expect(queue.getByText("Single", { exact: true })).toHaveCount(1);
+  await expect(queue.getByText("EP", { exact: true })).toHaveCount(0);
+  await expect(queue.getByText("Album", { exact: true })).toHaveCount(0);
 });
 
-test("several kinds can be hidden at once and put back together", async ({ page }) => {
+test("nothing pressed means everything", async ({ page }) => {
   await addArtist(page, "Testhead", { heardAlready: false });
   await page.goto("/");
 
-  await chip(page, "Singles").click();
-  await chip(page, "Compilations").click();
-  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "false");
-  await expect(chip(page, "Compilations")).toHaveAttribute("aria-pressed", "false");
+  const queue = page.locator("#to-listen");
+  const all = await queue.locator("li").count();
+  expect(all).toBeGreaterThan(1);
 
-  await page.locator("#to-listen").getByRole("button", { name: "Show all" }).click();
-  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "true");
-  await expect(chip(page, "Compilations")).toHaveAttribute("aria-pressed", "true");
+  // Every chip starts unpressed, and the queue is whole.
+  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "false");
+  await expect(chip(page, "Albums")).toHaveAttribute("aria-pressed", "false");
+
+  // Pressing and unpressing the same chip returns to everything.
+  await chip(page, "Singles").click();
+  await expect(queue.locator("li")).not.toHaveCount(all);
+  await chip(page, "Singles").click();
+  await expect(queue.locator("li")).toHaveCount(all);
 });
 
-test("a chip keeps its count after it is switched off", async ({ page }) => {
+test("several kinds can be picked at once and cleared together", async ({ page }) => {
+  await addArtist(page, "Testhead", { heardAlready: false });
+  await page.goto("/");
+
+  const queue = page.locator("#to-listen");
+  await chip(page, "Singles").click();
+  await chip(page, "EPs").click();
+  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "true");
+  await expect(chip(page, "EPs")).toHaveAttribute("aria-pressed", "true");
+
+  // Both kinds, and only those two.
+  await expect(queue.getByText("Single", { exact: true })).toHaveCount(1);
+  await expect(queue.getByText("EP", { exact: true })).toHaveCount(1);
+  await expect(queue.getByText("Album", { exact: true })).toHaveCount(0);
+
+  await page.locator("#to-listen").getByRole("button", { name: "Show all" }).click();
+  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "false");
+  await expect(chip(page, "EPs")).toHaveAttribute("aria-pressed", "false");
+  // Testhead's catalogue carries two albums, both back.
+  await expect(queue.getByText("Album", { exact: true })).toHaveCount(2);
+});
+
+test("a chip keeps its count after it is pressed", async ({ page }) => {
   await addArtist(page, "Testhead", { heardAlready: false });
   await page.goto("/");
 
   const singles = chip(page, "Singles");
   const before = await singles.textContent();
   await singles.click();
-  // Counts describe the queue, not the filtered view, or a chip you turned off
-  // would read zero and give you nothing to turn back on.
+  // Counts describe the whole queue, not the filtered view, or every other chip
+  // would read zero the moment one was pressed.
   await expect(singles).toHaveText(before ?? "");
+  await expect(chip(page, "Albums")).not.toHaveText(/\b0$/);
 });
 
 test("the filter is remembered across a reload", async ({ page }) => {
@@ -76,24 +108,40 @@ test("the filter is remembered across a reload", async ({ page }) => {
   await chip(page, "Singles").click();
   // Settled before reloading, or the reload races the action that writes the
   // cookie and the test measures nothing.
-  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "false");
+  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "true");
 
   await page.reload();
-  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "false");
+  await expect(chip(page, "Singles")).toHaveAttribute("aria-pressed", "true");
 });
 
-test("hiding everything says so rather than looking empty", async ({ page }) => {
-  // Test Cinema's catalogue is one album and one single, so two clicks empty it.
+test("picking a kind the queue hasn't got says so rather than looking empty", async ({
+  page,
+}) => {
+  /*
+   * Reachable whenever the chosen kind is all heard: the chips are drawn from
+   * the whole queue, so one can be pressed and match nothing left in it.
+   */
   await addArtist(page, "Test Cinema", { heardAlready: false });
   await page.goto("/");
 
+  const queue = page.locator("#to-listen");
   await chip(page, "Albums").click();
-  await expect(chip(page, "Albums")).toHaveAttribute("aria-pressed", "false");
-  await chip(page, "Singles").click();
+  await expect(chip(page, "Albums")).toHaveAttribute("aria-pressed", "true");
 
-  await expect(page.getByText("Nothing left once those kinds are hidden.")).toBeVisible();
-  // The way back is still on screen.
+  // Tick the only album off, and the filter now matches nothing.
+  await queue.locator("li").first().getByRole("button", { name: /Mark heard|Heard/ }).click();
+
+  await expect(page.getByText("Nothing in the queue of that kind.")).toBeVisible();
+  /*
+   * The chip stays, reading nought, because it is the only thing that explains
+   * the empty queue. Dropping it once its last release left would strand the
+   * filter switched on with nothing on screen switching it off.
+   */
   await expect(chip(page, "Albums")).toBeVisible();
+  await expect(chip(page, "Albums")).toHaveText(/0$/);
+
+  await chip(page, "Albums").click();
+  await expect(queue.locator("li")).not.toHaveCount(0);
 });
 
 test("artists can be filtered by name", async ({ page }) => {

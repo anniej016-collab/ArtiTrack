@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  parseHiddenCategories,
+  parseSelectedCategories,
   parseSectionStates,
   parseViewModes,
-  serialiseHiddenCategories,
+  serialiseSelectedCategories,
   serialiseSectionStates,
   serialiseViewModes,
-  toggleHiddenCategory,
+  toggleSelectedCategory,
+  isCategoryShown,
 } from "@/lib/view-mode";
 
 describe("view mode cookie", () => {
@@ -57,29 +58,47 @@ describe("section state cookie", () => {
 });
 
 describe("queue category filter cookie", () => {
-  it("hides nothing by default", () => {
-    expect(parseHiddenCategories(undefined)).toEqual([]);
+  it("selects nothing by default, which is everything", () => {
+    expect(parseSelectedCategories(undefined)).toEqual([]);
   });
 
-  it("retires the previous filter's values instead of choking on them", () => {
-    // "no-singles" and "albums-only" name no category, so an old cookie left
-    // over from the three-way toggle simply reads as nothing hidden.
-    expect(parseHiddenCategories("no-singles")).toEqual([]);
-    expect(parseHiddenCategories("albums-only")).toEqual([]);
+  it("retires an earlier filter's values instead of choking on them", () => {
+    // "no-singles" and "albums-only" name no category, so a cookie left over
+    // from the three-way toggle simply reads as no selection.
+    expect(parseSelectedCategories("no-singles")).toEqual([]);
+    expect(parseSelectedCategories("albums-only")).toEqual([]);
   });
 
   it("keeps known categories and drops the rest", () => {
-    expect(parseHiddenCategories("single,nonsense,live")).toEqual(["single", "live"]);
+    expect(parseSelectedCategories("single,nonsense,live")).toEqual(["single", "live"]);
   });
 
   it("round-trips and de-duplicates", () => {
-    expect(parseHiddenCategories(serialiseHiddenCategories(["ep", "ep"]))).toEqual([
+    expect(parseSelectedCategories(serialiseSelectedCategories(["ep", "ep"]))).toEqual([
       "ep",
     ]);
   });
 
   it("toggles one category without disturbing the others", () => {
-    expect(toggleHiddenCategory(["single"], "live")).toEqual(["single", "live"]);
-    expect(toggleHiddenCategory(["single", "live"], "single")).toEqual(["live"]);
+    expect(toggleSelectedCategory(["single"], "live")).toEqual(["single", "live"]);
+    expect(toggleSelectedCategory(["single", "live"], "single")).toEqual(["live"]);
+  });
+});
+
+describe("isCategoryShown", () => {
+  it("shows everything when nothing is selected", () => {
+    expect(isCategoryShown([], "album")).toBe(true);
+    expect(isCategoryShown([], "single")).toBe(true);
+  });
+
+  it("shows only what is selected", () => {
+    // The bug this replaces: pressing "album" used to leave everything but.
+    expect(isCategoryShown(["album"], "album")).toBe(true);
+    expect(isCategoryShown(["album"], "single")).toBe(false);
+  });
+
+  it("allows several at once", () => {
+    expect(isCategoryShown(["album", "ep"], "ep")).toBe(true);
+    expect(isCategoryShown(["album", "ep"], "live")).toBe(false);
   });
 });

@@ -26,17 +26,25 @@ export type SectionState = "collapsed" | "preview" | "expanded";
 export type SectionStates = Record<SectionKey, SectionState>;
 
 /**
- * Categories the queue is currently hiding.
+ * Categories the queue is currently narrowed to. Empty means everything.
  *
- * Stored as what's hidden rather than what's shown, so a category added later
- * shows up by default instead of silently vanishing from an existing cookie.
+ * This used to be the other way round — a list of what to hide — which read
+ * backwards to use: pressing "Albums" showed everything *except* albums, when
+ * pressing the thing you want should leave you with the thing you want. Empty
+ * still means no filter, so a category added later appears by default rather
+ * than being silently excluded by an existing cookie.
  */
-export type HiddenCategories = ReleaseCategory[];
+export type SelectedCategories = ReleaseCategory[];
 
 export const VIEW_MODE_COOKIE = "artitrack_views";
 export const GROUP_MODE_COOKIE = "artitrack_group";
 export const SECTION_STATE_COOKIE = "artitrack_sections";
-export const QUEUE_FILTER_COOKIE = "artitrack_queue_filter";
+/**
+ * A new name on purpose. The old cookie held categories to hide, and reading
+ * one of those as a selection would invert the filter for anyone mid-visit:
+ * a saved "hide singles" would come back as "show only singles".
+ */
+export const QUEUE_FILTER_COOKIE = "artitrack_queue_only";
 
 const DEFAULT_VIEW: ViewMode = "cards";
 const DEFAULT_SECTION_STATE: SectionState = "preview";
@@ -103,37 +111,45 @@ export async function getSectionStates(): Promise<SectionStates> {
 }
 
 /**
- * Unknown names are dropped, which is also how the previous filter's values
- * ("no-singles", "albums-only") retire themselves: they name no category, so an
- * old cookie simply reads as nothing hidden.
+ * Unknown names are dropped, which is also how every earlier version of this
+ * filter retires itself: its values name no category, so an old cookie simply
+ * reads as no selection, which is everything.
  */
-export function parseHiddenCategories(raw: string | undefined): HiddenCategories {
+export function parseSelectedCategories(raw: string | undefined): SelectedCategories {
   const known = new Set<string>(RELEASE_CATEGORIES);
-  const hidden = (raw ?? "")
+  const selected = (raw ?? "")
     .split(",")
     .map((value) => value.trim())
     .filter((value): value is ReleaseCategory => known.has(value));
 
-  return [...new Set(hidden)];
+  return [...new Set(selected)];
 }
 
-export function serialiseHiddenCategories(hidden: HiddenCategories): string {
-  return [...new Set(hidden)].join(",");
+export function serialiseSelectedCategories(selected: SelectedCategories): string {
+  return [...new Set(selected)].join(",");
 }
 
-/** Flipping one category on or off, leaving the rest as they were. */
-export function toggleHiddenCategory(
-  hidden: HiddenCategories,
+/** Adding one category to the selection, or taking it back out. */
+export function toggleSelectedCategory(
+  selected: SelectedCategories,
   category: ReleaseCategory,
-): HiddenCategories {
-  return hidden.includes(category)
-    ? hidden.filter((value) => value !== category)
-    : [...hidden, category];
+): SelectedCategories {
+  return selected.includes(category)
+    ? selected.filter((value) => value !== category)
+    : [...selected, category];
 }
 
-export async function getHiddenCategories(): Promise<HiddenCategories> {
+/** Whether a release survives the current selection. Nothing selected: all do. */
+export function isCategoryShown(
+  selected: SelectedCategories,
+  category: ReleaseCategory,
+): boolean {
+  return selected.length === 0 || selected.includes(category);
+}
+
+export async function getSelectedCategories(): Promise<SelectedCategories> {
   const store = await cookies();
-  return parseHiddenCategories(store.get(QUEUE_FILTER_COOKIE)?.value);
+  return parseSelectedCategories(store.get(QUEUE_FILTER_COOKIE)?.value);
 }
 
 export async function getGroupMode(): Promise<GroupMode> {
