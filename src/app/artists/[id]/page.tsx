@@ -18,6 +18,17 @@ import { IMPORT_SOURCE } from "@/lib/import/apply";
 import { formatDate } from "@/lib/format";
 import { byRating } from "@/lib/release-order";
 
+/**
+ * Releases drawn before "Show all" is offered.
+ *
+ * A discography is for browsing, so this is a screenful and a bit rather than
+ * the two rows the home page previews with — but it is not two hundred and
+ * thirty-eight. Drawing all of them made this page over a megabyte, sent on
+ * every visit and again after every tick, for a page you almost always open to
+ * look at one record near the top.
+ */
+const RELEASES_PER_PAGE = 24;
+
 export default async function ArtistPage({
   params,
   searchParams,
@@ -30,6 +41,10 @@ export default async function ArtistPage({
   // Ranked or chronological. Also a search param, for the same reason: it is
   // how you are reading this artist right now, not a setting for the whole app.
   const sort = query?.sort === "rating" ? "rating" : "date";
+  // A whole discography at once, when asked for. Also a search param: it is
+  // about this visit, and it keeps a long page linkable in the state you left
+  // it in.
+  const showAll = query?.all === "1";
 
   /*
    * Tracks are fetched only for the tab that shows them.
@@ -57,6 +72,15 @@ export default async function ArtistPage({
       ? prisma.release.findMany({
           where: { artistId: id, tracks: { some: {} } },
           orderBy: { releaseDate: "desc" },
+          /*
+           * Capped unless asked otherwise: every tracklist of a large
+           * discography at once is thousands of rows on one page, and reading
+           * them all to render them all is the slowest thing this app does.
+           *
+           * One more than shown, which is how the page knows whether to offer
+           * the rest without a second query counting what it already has.
+           */
+          ...(showAll ? {} : { take: RELEASES_PER_PAGE + 1 }),
           include: {
             tracks: {
               orderBy: { position: "asc" },
@@ -77,9 +101,31 @@ export default async function ArtistPage({
 
   if (!artist) notFound();
 
+  // The extra row was only ever there to answer "is there more?".
+  const moreSongLists = releasesWithSongs.length > RELEASES_PER_PAGE;
+  const songLists = moreSongLists
+    ? releasesWithSongs.slice(0, RELEASES_PER_PAGE)
+    : releasesWithSongs;
+
   const listenedCount = artist.releases.filter((release) => release.listened).length;
   const favourites = artist.releases.filter((release) => release.favourite);
-  const orderedReleases = sort === "rating" ? byRating(artist.releases) : artist.releases;
+  const ordered = sort === "rating" ? byRating(artist.releases) : artist.releases;
+  const orderedReleases = showAll ? ordered : ordered.slice(0, RELEASES_PER_PAGE);
+  const heldBack = ordered.length - orderedReleases.length;
+
+  /** This page as it is now, plus whatever is being changed. */
+  const hrefWith = (changes: Record<string, string | null>) => {
+    const params = new URLSearchParams();
+    if (tab === "songs") params.set("tab", "songs");
+    if (sort === "rating") params.set("sort", "rating");
+    if (showAll) params.set("all", "1");
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    }
+    const query = params.toString();
+    return `/artists/${artist.id}${query ? `?${query}` : ""}`;
+  };
   // Where releases are fetched from, which is separate from where the artist
   // came from: an imported artist can be pointed at a service later.
   const syncSource = artist.syncSource;
@@ -226,7 +272,7 @@ export default async function ArtistPage({
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex items-center gap-0.5 rounded-full border border-line p-0.5">
             <Link
-              href={`/artists/${artist.id}${sort === "rating" ? "?sort=rating" : ""}`}
+              href={hrefWith({ tab: null })}
               aria-current={tab === "releases" ? "page" : undefined}
               className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                 tab === "releases" ? "chip-on" : "text-muted hover:text-text"
@@ -235,7 +281,7 @@ export default async function ArtistPage({
               Releases · {artist.releases.length}
             </Link>
             <Link
-              href={`/artists/${artist.id}?tab=songs${sort === "rating" ? "&sort=rating" : ""}`}
+              href={hrefWith({ tab: "songs" })}
               aria-current={tab === "songs" ? "page" : undefined}
               className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                 tab === "songs" ? "chip-on" : "text-muted hover:text-text"
@@ -259,7 +305,7 @@ export default async function ArtistPage({
               aria-label="Order"
             >
               <Link
-                href={`/artists/${artist.id}`}
+                href={hrefWith({ sort: null })}
                 aria-current={sort === "date" ? "page" : undefined}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                   sort === "date" ? "chip-on" : "text-muted hover:text-text"
@@ -268,7 +314,7 @@ export default async function ArtistPage({
                 Newest
               </Link>
               <Link
-                href={`/artists/${artist.id}?sort=rating`}
+                href={hrefWith({ sort: "rating" })}
                 aria-current={sort === "rating" ? "page" : undefined}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                   sort === "rating" ? "chip-on" : "text-muted hover:text-text"
@@ -287,26 +333,50 @@ export default async function ArtistPage({
               <p className="mt-3 text-sm text-muted">Nothing here yet.</p>
             </div>
           ) : (
-            <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-              {orderedReleases.map((release) => (
-                <ReleaseCard
-                  key={release.id}
-                  release={release}
-                  showListenedDate
-                  // Only in the ranked view: a rating you sorted by has to be
-                  // legible, but on the chronological list it is one more thing
-                  // under every title in a grid that is already dense.
-                  showRating={sort === "rating"}
-                />
-              ))}
-            </ul>
+            <>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+                {orderedReleases.map((release) => (
+                  <ReleaseCard
+                    key={release.id}
+                    release={release}
+                    showListenedDate
+                    // Only in the ranked view: a rating you sorted by has to be
+                    // legible, but on the chronological list it is one more
+                    // thing under every title in a grid that is already dense.
+                    showRating={sort === "rating"}
+                  />
+                ))}
+              </ul>
+
+              {heldBack > 0 && (
+                <div className="mt-5">
+                  <Link
+                    href={hrefWith({ all: "1" })}
+                    className="btn-ghost inline-block px-3 py-1.5 text-xs font-medium"
+                  >
+                    Show all {ordered.length}
+                  </Link>
+                </div>
+              )}
+
+              {showAll && ordered.length > RELEASES_PER_PAGE && (
+                <div className="mt-5">
+                  <Link
+                    href={hrefWith({ all: null })}
+                    className="btn-ghost inline-block px-3 py-1.5 text-xs font-medium"
+                  >
+                    Show fewer
+                  </Link>
+                </div>
+              )}
+            </>
           )
         ) : (
           <div className="flex flex-col gap-6">
             {missingSongs > 0 && (
               <div className="panel flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <p className="text-xs text-muted">
-                  {releasesWithSongs.length === 0
+                  {songLists.length === 0
                     ? "Song lists haven't been fetched yet."
                     : `${missingSongs} release${missingSongs === 1 ? "" : "s"} still to fetch.`}{" "}
                   <span className="text-faint">
@@ -317,7 +387,7 @@ export default async function ArtistPage({
               </div>
             )}
 
-            {releasesWithSongs.length === 0 ? (
+            {songLists.length === 0 ? (
               missingSongs === 0 && (
                 <div className="panel flex flex-col items-center gap-3 px-5 py-10 text-center">
                   <VinylIcon className="size-7 text-white/15" />
@@ -329,7 +399,7 @@ export default async function ArtistPage({
                 </div>
               )
             ) : (
-              releasesWithSongs.map((release) => {
+              songLists.map((release) => {
                 const heard = release.tracks.filter((t) => t.song?.listened).length;
                 return (
                   <div key={release.id}>
@@ -353,6 +423,19 @@ export default async function ArtistPage({
                   </div>
                 );
               })
+            )}
+
+            {/* Capped the same way as the grid, and for the same reason: every
+                tracklist at once is the heaviest page in the app by some way. */}
+            {moreSongLists && (
+              <div>
+                <Link
+                  href={hrefWith({ all: "1" })}
+                  className="btn-ghost inline-block px-3 py-1.5 text-xs font-medium"
+                >
+                  Show the rest
+                </Link>
+              </div>
             )}
           </div>
         )}

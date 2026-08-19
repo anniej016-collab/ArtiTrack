@@ -53,6 +53,10 @@ losing their history.
   are fetched per release, in batches, because each one costs a separate request.
 - **Switch between cards and a list** — each home section keeps its own choice, so the
   queue can be a list while your artists stay as cards.
+- **An artist page draws a screenful, not a discography.** Twenty-four releases, with
+  "Show all" for the rest, and the same cap on the Songs tab. Drawing every release of a
+  large catalogue made that page over a megabyte, sent on every visit and again after
+  every tick, for a page you usually open to look at one record near the top.
 - **Every section previews two rows**, with "Show all" to expand and a chevron to
   collapse it entirely. Both stick between visits, so the home page stays a fixed length
   however large the library grows. Release sections lead with the most recent; artists
