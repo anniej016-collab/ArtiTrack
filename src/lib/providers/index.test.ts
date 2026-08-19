@@ -24,10 +24,23 @@ describe("the provider registry", () => {
   });
 
   it("separates sources that can produce song lists from those that can't", () => {
+    expect(supportsTracks("spotify")).toBe(true);
     expect(supportsTracks("deezer")).toBe(true);
+    // Reaching a tracklist here costs a request per release and then per
+    // recording, which is why it is left out rather than merely absent.
     expect(supportsTracks("musicbrainz")).toBe(false);
-    expect(SYNCABLE_SOURCES).toEqual(expect.arrayContaining(["deezer", "musicbrainz"]));
-    expect(TRACK_SOURCES).toEqual(["deezer"]);
+
+    expect(SYNCABLE_SOURCES).toEqual(
+      expect.arrayContaining(["spotify", "deezer", "musicbrainz"]),
+    );
+    /*
+     * Asserted as a property rather than a literal list: what matters is that
+     * the streaming services are in and MusicBrainz is out, and spelling the
+     * membership out again means this fails on every provider added, saying
+     * nothing about whether anything broke.
+     */
+    expect(TRACK_SOURCES).toEqual(expect.arrayContaining(["spotify", "deezer"]));
+    expect(TRACK_SOURCES).not.toContain("musicbrainz");
   });
 
   it("names sources for display, falling back to the raw value", () => {

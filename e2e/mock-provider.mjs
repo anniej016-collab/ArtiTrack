@@ -199,6 +199,70 @@ createServer((req, res) => {
   match = url.pathname.match(/^\/album\/(\d+)\/tracks$/);
   if (match) return json({ data: TRACKS[match[1]] ?? [] });
 
+  /*
+   * Spotify's shape: a token endpoint, then paged listings under a different
+   * envelope from Deezer's. The same catalogue is served, under Spotify's own
+   * ids, which is what makes switching an artist across worth testing — the
+   * ids never match, so only title-and-year matching can recognise a record it
+   * already has.
+   */
+  if (url.pathname === "/spotify/api/token") {
+    return json({ access_token: "test-token", expires_in: 3600 });
+  }
+
+  if (url.pathname === "/spotify/v1/search") {
+    const q = (url.searchParams.get("q") ?? "").toLowerCase();
+    return json({
+      artists: {
+        items: ARTISTS.filter((a) => a.name.toLowerCase().includes(q)).map((a) => ({
+          id: `sp-${a.id}`,
+          name: a.name,
+          images: [{ url: `${SELF}/img/spotify-${a.id}` }],
+        })),
+      },
+    });
+  }
+
+  match = url.pathname.match(/^\/spotify\/v1\/artists\/sp-(\d+)$/);
+  if (match) {
+    const artist = ARTISTS.find((a) => String(a.id) === match[1]);
+    if (!artist) return json({ error: { message: "no such artist" } });
+    return json({
+      id: `sp-${artist.id}`,
+      name: artist.name,
+      images: [{ url: `${SELF}/img/spotify-${artist.id}` }],
+    });
+  }
+
+  match = url.pathname.match(/^\/spotify\/v1\/artists\/sp-(\d+)\/albums$/);
+  if (match) {
+    const albums = (ALBUMS[match[1]] ?? []).filter((a) => a.release_date !== "0000-00-00");
+    return json({
+      items: albums.map((album) => ({
+        id: `sp-${album.id}`,
+        name: album.title,
+        album_type: album.record_type === "ep" ? "single" : album.record_type,
+        release_date: album.release_date,
+        release_date_precision: "day",
+        images: [{ url: album.cover_medium }],
+      })),
+      next: null,
+    });
+  }
+
+  match = url.pathname.match(/^\/spotify\/v1\/albums\/sp-(\d+)\/tracks$/);
+  if (match) {
+    return json({
+      items: (TRACKS[match[1]] ?? []).map((track) => ({
+        id: `sp-${track.id}`,
+        name: track.title,
+        track_number: track.track_position,
+        duration_ms: track.duration * 1000,
+      })),
+      next: null,
+    });
+  }
+
   if (url.pathname === "/mb/artist") {
     const q = (url.searchParams.get("query") ?? "").toLowerCase();
     return json({ artists: MB_ARTISTS.filter((a) => a.name.toLowerCase().includes(q)) });

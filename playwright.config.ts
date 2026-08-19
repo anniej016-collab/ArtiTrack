@@ -100,6 +100,10 @@ export default defineConfig({
       command: `npx next dev -p ${PORT}`,
       env: {
         DEEZER_API_BASE: `http://127.0.0.1:${MOCK_PORT}`,
+        SPOTIFY_API_BASE: `http://127.0.0.1:${MOCK_PORT}/spotify/v1`,
+        SPOTIFY_ACCOUNTS_BASE: `http://127.0.0.1:${MOCK_PORT}/spotify`,
+        SPOTIFY_CLIENT_ID: "test-client",
+        SPOTIFY_CLIENT_SECRET: "test-secret",
         MUSICBRAINZ_API_BASE: `http://127.0.0.1:${MOCK_PORT}/mb`,
         COVER_ART_API_BASE: `http://127.0.0.1:${MOCK_PORT}/coverart`,
         DATABASE_URL: process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ?? "",

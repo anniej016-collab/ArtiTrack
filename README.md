@@ -5,11 +5,20 @@ listened to, and pause artists you no longer want new-release updates from — w
 losing their history.
 
 - **Search for an artist** on the home page and add them. Their back catalogue is
-  imported automatically from [Deezer](https://www.deezer.com) — no API key or account
-  needed. Artists Deezer doesn't carry are looked up in
-  [MusicBrainz](https://musicbrainz.org) instead, which covers independent, regional and
-  older material; it has releases but no artwork or song lists. Artists can still be
-  added and their releases logged by hand.
+  imported automatically from [Spotify](https://open.spotify.com), whose catalogue is the
+  fullest of the three sources — it leads because the others were quietly missing
+  releases that plainly exist. Spotify needs credentials (see below); without them the
+  search simply falls through to the next source. [Deezer](https://www.deezer.com) is
+  second and needs no key or account at all, so it still answers when Spotify is
+  unconfigured or refusing. Artists neither carries are looked up in
+  [MusicBrainz](https://musicbrainz.org), which covers independent, regional and older
+  material; it has releases but no artwork or song lists. Artists can still be added and
+  their releases logged by hand.
+- **An artist can be moved from one service to another** without becoming two artists or
+  gaining a second copy of their catalogue. Provider ids never agree between services, so
+  switching clears them and hands every release back to the same match-by-title-and-year
+  that adopts records imported from a file — tracklists, notes, ratings and heard marks
+  all stay put.
 - **New releases arrive on their own.** A scheduled job checks nightly, so the queue is
   up to date whenever you open the app. There are still buttons to check on demand. Re-syncing updates existing releases rather than duplicating
   them, and never overwrites what you've marked as listened.
@@ -220,6 +229,23 @@ available"*, the database is not reaching that build. The build log lists the na
 the database-related variables it can see, which distinguishes "nothing attached" from
 "attached but scoped to a different environment".
 
+## Connecting Spotify
+
+Spotify is the only source that needs credentials, and they are app credentials rather
+than anyone's login — nothing here reads a user's account, only the public catalogue.
+
+1. Sign in at [developer.spotify.com](https://developer.spotify.com) with an ordinary
+   Spotify account, free or otherwise, and open the **Dashboard**.
+2. **Create app.** The name and description are yours to choose; a redirect URI is
+   required by the form but unused here, so the deployed address with `/callback` on the
+   end will do. Tick **Web API**.
+3. From the app's **Settings**, copy the **Client ID** and **Client secret** into the
+   project's environment variables as `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`.
+
+Leave them unset and nothing breaks: Spotify is skipped and Deezer answers instead. That
+is also what the tests do — `e2e/mock-provider.mjs` serves Spotify's shapes alongside the
+others, so none of this needs the real service.
+
 ## Scheduled syncing
 
 `vercel.json` runs `/api/cron/sync` once a day. Set **`CRON_SECRET`** in the project's
@@ -319,4 +345,8 @@ Pausing an artist only changes `Artist.status`. It never deletes or alters relea
 `syncArtist` refuses to run for a paused artist.
 
 Adding a provider means implementing `searchArtists` / `fetchArtistReleases` alongside
-`src/lib/providers/deezer.ts`; the sync layer is written against that shape.
+`src/lib/providers/deezer.ts`; the sync layer is written against that shape. Spotify adds
+two wrinkles the others don't have: a token that has to be fetched and reused rather than
+requested per call, and listings paged fifty at a time — stopping at the first page would
+quietly lose most of a large discography, which is the exact complaint it was added to
+answer.

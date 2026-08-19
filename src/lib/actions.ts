@@ -223,8 +223,25 @@ export async function linkArtistForSync(
 
   const artist = await prisma.artist.findUnique({
     where: { id: artistId },
-    select: { imageUrl: true },
+    select: { imageUrl: true, syncSource: true },
   });
+
+  /*
+   * Moving to a different service invalidates every provider id on file.
+   *
+   * A release's externalId is only meaningful to the service that issued it,
+   * and the two never agree — so without this, the first sync after switching
+   * recognises nothing and adds the entire catalogue a second time. Clearing
+   * them hands each release back to the same match-by-title-and-year that
+   * adopts records imported from a file, which then re-points them at the new
+   * service, tracklists, notes, ratings and heard marks intact.
+   */
+  if (artist?.syncSource && artist.syncSource !== source) {
+    await prisma.release.updateMany({
+      where: { artistId },
+      data: { externalId: null },
+    });
+  }
 
   await prisma.artist.update({
     where: { id: artistId },

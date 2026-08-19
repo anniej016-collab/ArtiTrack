@@ -1,4 +1,5 @@
 import * as deezer from "@/lib/providers/deezer";
+import * as spotify from "@/lib/providers/spotify";
 import * as musicbrainz from "@/lib/providers/musicbrainz";
 import type {
   ProviderArtist,
@@ -8,7 +9,7 @@ import type {
 
 export type { ProviderArtist, ProviderRelease, ProviderTrack };
 
-export type ProviderKey = "deezer" | "musicbrainz";
+export type ProviderKey = "spotify" | "deezer" | "musicbrainz";
 
 type Provider = {
   key: ProviderKey;
@@ -22,6 +23,14 @@ type Provider = {
 };
 
 const PROVIDERS: Record<ProviderKey, Provider> = {
+  spotify: {
+    key: "spotify",
+    label: "Spotify",
+    searchArtists: spotify.searchArtists,
+    fetchArtistReleases: spotify.fetchArtistReleases,
+    fetchArtist: spotify.fetchArtist,
+    fetchReleaseTracks: spotify.fetchReleaseTracks,
+  },
   deezer: {
     key: "deezer",
     label: "Deezer",
@@ -69,16 +78,33 @@ export function supportsTracks(source: string): boolean {
 }
 
 /**
- * Searches Deezer, falling back to MusicBrainz when it finds nothing.
+ * Searches Spotify, then Deezer, then MusicBrainz, stopping at the first that
+ * answers.
  *
- * Deezer is the better source when it has the artist — real artwork, clean
- * types — but it only carries what it licenses. MusicBrainz is
- * community-maintained and covers independent, regional and older material that
- * never reaches a streaming catalogue.
+ * Spotify leads because its catalogue is the fullest of the three, which is why
+ * it was added: Deezer was quietly missing releases that plainly exist. Deezer
+ * stays behind it — it needs no credentials, so it still works when Spotify is
+ * unconfigured or refusing, and it carries some things Spotify does not.
+ * MusicBrainz is last and covers what no streaming service does: independent,
+ * regional and older material, with no artwork and no song lists.
+ *
+ * Each is tried in turn rather than merged. Two services describing the same
+ * artist differently gives you two rows for one person and a choice nobody
+ * should have to make.
  */
 export async function searchArtistsEverywhere(
   query: string,
 ): Promise<{ results: ProviderArtist[]; usedFallback: boolean }> {
+  if (spotify.isConfigured()) {
+    try {
+      const results = await PROVIDERS.spotify.searchArtists(query);
+      if (results.length > 0) return { results, usedFallback: false };
+    } catch {
+      // Bad credentials or a service having a moment shouldn't take the search
+      // down with it — there are two more to ask.
+    }
+  }
+
   const primary = await PROVIDERS.deezer.searchArtists(query);
   if (primary.length > 0) return { results: primary, usedFallback: false };
 
