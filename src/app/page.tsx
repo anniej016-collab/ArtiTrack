@@ -180,10 +180,16 @@ function ArtistGroup({
   id?: string;
 }) {
   if (mode === "list") {
-    const shown = clamp ? artists.slice(0, LIST_PREVIEW) : artists;
+    /* Whole list for the same reason as the grid below: the filter can only
+       find what was sent. The rows past the preview are hidden by CSS. */
     return (
-      <ul id={id} className="panel divide-y divide-line overflow-hidden">
-        {shown.map((artist) => (
+      <ul
+        id={id}
+        className={`panel divide-y divide-line overflow-hidden ${
+          clamp ? "clamp-list" : ""
+        }`}
+      >
+        {artists.map((artist) => (
           // `relative` anchors the stretched link, so the whole row is tappable
           // instead of just the name.
           <li
@@ -205,8 +211,18 @@ function ArtistGroup({
     );
   }
 
-  const shownCards = clamp ? artists.slice(0, CARD_PREVIEW) : artists;
-
+  /*
+   * Not sliced, unlike the release grids.
+   *
+   * The name filter works on what is on the page, which is what makes it
+   * instant. Slicing to the preview left it filtering twelve artists out of
+   * two hundred: search for someone filed under W and the answer was nothing,
+   * with no hint that the rest were never there to search. Being told to press
+   * "Show all" before a search can work is not a filter.
+   *
+   * An artist card is a name, a picture and a count — cheap next to a release
+   * grid, which is where the weight actually was.
+   */
   return (
     <ul
       id={id}
@@ -214,7 +230,7 @@ function ArtistGroup({
         clamp ? "clamp-rows" : ""
       }`}
     >
-      {shownCards.map((artist) => (
+      {artists.map((artist) => (
         <ArtistCard key={artist.id} artist={artist} />
       ))}
     </ul>

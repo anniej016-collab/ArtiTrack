@@ -7,23 +7,34 @@ import {
   type SearchState,
 } from "@/lib/actions";
 import { VinylIcon } from "@/components/icons";
+import { providerLabel } from "@/lib/providers";
 
 const empty: SearchState = { query: "", results: [], usedFallback: false, error: null };
 
 /**
- * Attaches an artist already in the library to a music service.
+ * Attaches an artist already in the library to a music service, or moves them
+ * to a different one.
  *
- * For a catalogue kept as a file, or one added by hand: the releases are
- * already here, but nothing was watching for new ones. Matching is a choice
- * rather than a guess, because a name alone is not enough to be sure which
- * act is meant — particularly for a group whose units all share a prefix.
+ * Two jobs that are the same operation. One is a catalogue kept as a file or
+ * added by hand, where the releases are here but nothing was watching for new
+ * ones. The other is an artist already being watched by a service that turns
+ * out to be missing records — which had no way out at all until now, because
+ * this control only appeared when nothing was attached. Being told to move an
+ * artist and finding no way to do it is worse than not offering it.
+ *
+ * Matching is a choice rather than a guess, because a name alone is not enough
+ * to be sure which act is meant — particularly for a group whose units all
+ * share a prefix.
  */
 export function LinkForSync({
   artistId,
   artistName,
+  /** The service watching them now, if any. */
+  currentSource,
 }: {
   artistId: string;
   artistName: string;
+  currentSource?: string | null;
 }) {
   const [state, action, searching] = useActionState(searchArtistsAction, empty);
   const [linking, startLinking] = useTransition();
@@ -36,7 +47,9 @@ export function LinkForSync({
         onClick={() => setOpen(true)}
         className="btn-ghost px-3 py-1.5 text-xs font-medium"
       >
-        Check for new releases automatically
+        {currentSource
+          ? "Check a different service for their releases"
+          : "Check for new releases automatically"}
       </button>
     );
   }
@@ -46,9 +59,14 @@ export function LinkForSync({
       <div>
         <p className="text-sm font-medium">Which one are they?</p>
         <p className="mt-1 text-xs text-faint">
-          Pick the match and new releases will arrive with the nightly check. What&apos;s
-          already here stays, and anything the service also lists is recognised rather
-          than added twice.
+          {currentSource
+            ? `Pick the match and their releases will come from there instead of
+               ${providerLabel(currentSource)}. Everything already here stays — records
+               both services list are recognised rather than added twice, and what you
+               have marked heard is untouched.`
+            : `Pick the match and new releases will arrive with the nightly check.
+               What's already here stays, and anything the service also lists is
+               recognised rather than added twice.`}
         </p>
       </div>
 

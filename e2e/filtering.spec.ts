@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addArtist, resetDatabase, resetPreferences } from "./helpers";
+import { addArtist, resetDatabase, resetPreferences, runSql } from "./helpers";
 
 test.beforeEach(async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "not device-specific");
@@ -175,4 +175,59 @@ test("artists can be filtered by name", async ({ page }) => {
   // Clearing brings everyone back, including any the two-row preview had hidden.
   await filter.fill("");
   await expect(page.locator("#following-list li:visible")).toHaveCount(5);
+});
+
+test("the filter finds an artist the preview never showed", async ({ page }) => {
+  /*
+   * Shipped broken by the payload work: previewing two rows started sending
+   * only two rows, and the filter searches what is on the page. Someone filed
+   * under W in a list of two hundred simply could not be found, with nothing to
+   * suggest the rest were never there — and pressing "Show all" first is not a
+   * filter.
+   */
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await runSql(`
+    INSERT INTO "Artist" (id, name, status, source, "createdAt")
+    SELECT 'bulk' || g, 'Filler ' || g, 'ACTIVE', 'manual', now()
+    FROM generate_series(1, 30) g
+  `);
+  // Sorts last, so the two-row preview cannot be showing it.
+  await runSql(`
+    INSERT INTO "Artist" (id, name, status, source, "createdAt")
+    VALUES ('zed', 'Wanted Group', 'ACTIVE', 'manual', now())
+  `);
+
+  await page.goto("/");
+  const following = page.locator("#following");
+
+  // Out of sight to begin with, as the preview intends.
+  await expect(following.getByRole("link", { name: "Wanted Group" })).toBeHidden();
+
+  await following.getByRole("searchbox", { name: /Filter artists/ }).fill("wanted");
+
+  await expect(following.getByRole("link", { name: "Wanted Group" })).toBeVisible();
+  // And it is the only thing left.
+  await expect(following.locator("li:visible")).toHaveCount(1);
+});
+
+test("the filter works in list view too", async ({ page }) => {
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await runSql(`
+    INSERT INTO "Artist" (id, name, status, source, "createdAt")
+    SELECT 'bulk' || g, 'Filler ' || g, 'ACTIVE', 'manual', now()
+    FROM generate_series(1, 30) g
+  `);
+  await runSql(`
+    INSERT INTO "Artist" (id, name, status, source, "createdAt")
+    VALUES ('zed', 'Wanted Group', 'ACTIVE', 'manual', now())
+  `);
+
+  await page.goto("/");
+  const following = page.locator("#following");
+  await following.getByRole("button", { name: "List view" }).click();
+  await expect(following.locator("ul.panel")).toBeVisible();
+
+  await expect(following.getByRole("link", { name: "Wanted Group" })).toBeHidden();
+  await following.getByRole("searchbox", { name: /Filter artists/ }).fill("wanted");
+  await expect(following.getByRole("link", { name: "Wanted Group" })).toBeVisible();
 });

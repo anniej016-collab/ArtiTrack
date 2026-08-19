@@ -63,3 +63,35 @@ test("moving an artist to another service doesn't list everything twice", async 
   // And still heard, which is the thing a duplicate would have thrown away.
   await expect(page.locator("#to-listen li")).toHaveCount(0);
 });
+
+test("an artist already on a service can be moved to another one", async ({ page }) => {
+  /*
+   * The gap that made the whole Spotify change unusable: the control offering a
+   * service only appeared when *no* service was attached, so an artist watched
+   * by one that turns out to be missing records had no way out. Being told to
+   * move an artist and finding nothing to press is worse than not offering it.
+   *
+   * Starts on Deezer, which is where an artist added before Spotify existed
+   * actually is, and moves them the way a person would.
+   */
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await runSql(
+    `UPDATE "Artist" SET "syncSource" = 'deezer', "syncExternalId" = '399' WHERE name = 'Testhead'`,
+  );
+
+  await openArtist(page, "Testhead");
+  await expect(page.getByText(/Releases come from Deezer/)).toBeVisible();
+  const before = await page.locator("a[href^='/releases/']").count();
+  expect(before).toBeGreaterThan(2);
+
+  await page.getByRole("button", { name: /Check a different service/ }).click();
+  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "This one" }).first().click();
+
+  // On Spotify now, with one copy of the catalogue and the heard marks intact.
+  await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
+  await expect(page.locator("a[href^='/releases/']")).toHaveCount(before);
+  await page.goto("/");
+  await expect(page.locator("#following").getByText("Testhead")).toHaveCount(1);
+  await expect(page.locator("#to-listen li")).toHaveCount(0);
+});

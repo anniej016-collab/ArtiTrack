@@ -6,7 +6,10 @@ import { useState } from "react";
  * Filters an artist list in place.
  *
  * Deliberately client-side: the whole list is already on the page, so filtering
- * here is instant where a round trip per keystroke would not be.
+ * here is instant where a round trip per keystroke would not be. That the whole
+ * list is present is load-bearing rather than incidental — see the artist grid,
+ * which is sent complete for exactly this reason while the release grids are
+ * not.
  */
 export function ArtistFilter({ targetId }: { targetId: string }) {
   const [query, setQuery] = useState("");
@@ -25,17 +28,22 @@ export function ArtistFilter({ targetId }: { targetId: string }) {
         const list = document.getElementById(targetId);
         if (!list) return;
 
-        // Remember whether the list was clamped to two rows before interfering.
-        if (list.dataset.clamped === undefined) {
-          list.dataset.clamped = list.classList.contains("clamp-rows") ? "1" : "0";
+        // Remember which preview clamp was on before interfering: cards are cut
+        // to two rows, lists to six, and the list can be in either mode.
+        if (list.dataset.clamp === undefined) {
+          list.dataset.clamp = list.classList.contains("clamp-rows")
+            ? "clamp-rows"
+            : list.classList.contains("clamp-list")
+              ? "clamp-list"
+              : "";
         }
 
         const needle = value.trim().toLowerCase();
 
-        // While filtering, the two-row clamp has to come off: otherwise a match
-        // sitting in the third row stays hidden and the filter looks broken.
-        if (list.dataset.clamped === "1") {
-          list.classList.toggle("clamp-rows", needle === "");
+        // While filtering, the clamp has to come off: otherwise a match sitting
+        // past the preview stays hidden and the filter looks broken.
+        if (list.dataset.clamp) {
+          list.classList.toggle(list.dataset.clamp, needle === "");
         }
 
         for (const item of list.querySelectorAll<HTMLElement>("li")) {

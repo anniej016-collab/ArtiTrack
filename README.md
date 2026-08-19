@@ -14,8 +14,9 @@ losing their history.
   [MusicBrainz](https://musicbrainz.org), which covers independent, regional and older
   material; it has releases but no artwork or song lists. Artists can still be added and
   their releases logged by hand.
-- **An artist can be moved from one service to another** without becoming two artists or
-  gaining a second copy of their catalogue. Provider ids never agree between services, so
+- **An artist can be moved from one service to another** — *Check a different service for
+  their releases*, on their own page — without becoming two artists or gaining a second
+  copy of their catalogue. Provider ids never agree between services, so
   switching clears them and hands every release back to the same match-by-title-and-year
   that adopts records imported from a file — tracklists, notes, ratings and heard marks
   all stay put.
@@ -38,7 +39,9 @@ losing their history.
   distinguishes four kinds. Only the chips you actually have are shown — plus any
   you have pressed, which stays put even after its last release is ticked off, so a
   filter can never be left on with nothing on screen to turn it off. Long artist
-  lists get a name filter.
+  lists get a name filter, which searches the whole list rather than the part of it a
+  preview happens to be showing — artists are sent complete and the preview hides the
+  overflow with styling, which is the one place that costs page weight on purpose.
 - **Hearing a release means hearing its songs**, and ticking off the last song
   completes the release. Because a song belongs to the artist rather than to one
   record, that reaches sideways too: hearing the deluxe edition completes the

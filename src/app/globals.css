@@ -220,6 +220,17 @@ body {
 }
 
 /*
+ * The list-view equivalent of .clamp-rows: a preview shows six rows.
+ *
+ * Done in CSS rather than by sending six rows, because the artist filter
+ * searches what is on the page — sending only the preview means searching only
+ * the preview, and a name filed past the sixth row simply cannot be found.
+ */
+.clamp-list > *:nth-child(n + 7) {
+  display: none;
+}
+
+/*
  * Cover-art buttons stay visible on touch screens, where there is no hover to
  * reveal them, and fade in on hover only where hovering is actually possible.
  */

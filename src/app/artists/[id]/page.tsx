@@ -237,11 +237,17 @@ export default async function ArtistPage({
               : "Added by hand — log releases yourself below."}
       </p>
 
-      {/* Nothing is watching for new releases yet, which is the one thing an
-          imported or hand-built artist is missing. */}
-      {!isSyncable && !isPaused && (
+      {/* Offered whether or not something is already watching. Attaching a
+          service is what an imported or hand-built artist is missing; moving to
+          another is what an artist watched by a service that turns out to be
+          missing records needs, and there was no way to do it at all. */}
+      {!isPaused && (
         <div className="-mt-6">
-          <LinkForSync artistId={artist.id} artistName={artist.name} />
+          <LinkForSync
+            artistId={artist.id}
+            artistName={artist.name}
+            currentSource={isSyncable ? syncSource : null}
+          />
         </div>
       )}
 
