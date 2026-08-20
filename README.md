@@ -46,6 +46,15 @@ losing their history.
   completes the release. Because a song belongs to the artist rather than to one
   record, that reaches sideways too: hearing the deluxe edition completes the
   standard album it shares its songs with.
+- **Take a record off an artist it isn't really by.** A service files a
+  various-artists compilation under everyone who appears on it, so an artist's page
+  grows records they played two songs on. *Not their release* takes it off their page
+  and out of the queue, and its songs stop counting towards theirs. Deleting cannot do
+  this job: the row is what tells the next sync it already knows the release, so a
+  deleted one is back the following night. Nothing is destroyed — removed records sit
+  in a small closed fold at the foot of the artist's page, deliberately quieter than
+  anything else on it, and *Put back* restores the record with its tracklist, notes,
+  rating and heard marks intact.
 - **Set aside anything you've no plans to play.** A third state, because the other two
   both say the wrong thing about a record you've decided to skip: leaving it unheard
   keeps it in the queue for good, and marking it heard is untrue. It drops out of the
@@ -340,6 +349,9 @@ where this project's regressions have been; unit tests could not have caught any
 - `Release.rating` is in half-stars: a whole number from 1 to 10, where 7 is three and a
   half. Stored doubled rather than as a decimal, because the scale has exactly ten
   positions and an integer cannot land between two of them.
+- `Release.removedAt` marks a record taken off an artist as not theirs. A mark rather
+  than a deletion because the row is what makes re-syncing idempotent: delete it and the
+  next sync adds it back, with nothing recording that you ever said otherwise.
 - `Release.arrivedAt` is set only by a sync of an artist already being followed, which is
   the one moment "this is new" is knowable — a row created a minute after the artist and
   one created a year after look identical on a timestamp. `Release.firstSeenAt` is

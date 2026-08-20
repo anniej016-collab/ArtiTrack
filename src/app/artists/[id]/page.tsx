@@ -11,6 +11,7 @@ import { LoadArtistTracksButton } from "@/components/LoadTracksButton";
 import { ArtistNotes } from "@/components/ArtistNotes";
 import { EditArtistForm } from "@/components/EditArtistForm";
 import { LinkForSync } from "@/components/LinkForSync";
+import { RemoveReleaseButton } from "@/components/RemoveReleaseButton";
 import { VinylIcon } from "@/components/icons";
 import { deleteArtist } from "@/lib/actions";
 import { isSyncableSource, providerLabel, supportsTracks } from "@/lib/providers";
@@ -60,17 +61,34 @@ export default async function ArtistPage({
   const [artist, songCount, heardSongCount, releasesWithSongs] = await Promise.all([
     prisma.artist.findUnique({
       where: { id },
-      include: { releases: { orderBy: { releaseDate: "desc" } } },
+      include: {
+        // Removed ones are fetched too, for the fold at the foot of the page,
+        // and filtered out of everything else below.
+        releases: { orderBy: { releaseDate: "desc" } },
+      },
     }),
     // Songs rather than tracks: the same song on an album and a compilation is
     // one thing to listen to, not two. Songs whose last track has gone are
     // cleared away as tracklists change, so counting them here matches what
     // the Songs tab lists.
-    prisma.song.count({ where: { artistId: id } }),
-    prisma.song.count({ where: { artistId: id, listened: true } }),
+    /*
+     * Only songs still reachable through a release that is theirs. Removing a
+     * compilation they guest on has to take its songs with it, or the count
+     * keeps promising songs the Songs tab no longer lists.
+     */
+    prisma.song.count({
+      where: { artistId: id, tracks: { some: { release: { removedAt: null } } } },
+    }),
+    prisma.song.count({
+      where: {
+        artistId: id,
+        listened: true,
+        tracks: { some: { release: { removedAt: null } } },
+      },
+    }),
     tab === "songs"
       ? prisma.release.findMany({
-          where: { artistId: id, tracks: { some: {} } },
+          where: { artistId: id, tracks: { some: {} }, removedAt: null },
           orderBy: { releaseDate: "desc" },
           /*
            * Capped unless asked otherwise: every tracklist of a large
@@ -107,9 +125,14 @@ export default async function ArtistPage({
     ? releasesWithSongs.slice(0, RELEASES_PER_PAGE)
     : releasesWithSongs;
 
-  const listenedCount = artist.releases.filter((release) => release.listened).length;
-  const favourites = artist.releases.filter((release) => release.favourite);
-  const ordered = sort === "rating" ? byRating(artist.releases) : artist.releases;
+  // Everything below reads this rather than artist.releases: a removed record
+  // is not theirs, so it is not in a count, a grid, a rating order or the queue.
+  const releases = artist.releases.filter((release) => release.removedAt === null);
+  const removed = artist.releases.filter((release) => release.removedAt !== null);
+
+  const listenedCount = releases.filter((release) => release.listened).length;
+  const favourites = releases.filter((release) => release.favourite);
+  const ordered = sort === "rating" ? byRating(releases) : releases;
   const orderedReleases = showAll ? ordered : ordered.slice(0, RELEASES_PER_PAGE);
   const heldBack = ordered.length - orderedReleases.length;
 
@@ -136,7 +159,7 @@ export default async function ArtistPage({
   const isPaused = artist.status === "PAUSED";
 
   const missingSongs = canLoadTracks
-    ? artist.releases.filter(
+    ? releases.filter(
         (release) => release.tracksSyncedAt === null && release.externalId !== null,
       ).length
     : 0;
@@ -183,8 +206,8 @@ export default async function ArtistPage({
                 {artist.name}
               </h1>
               <p className="mt-1.5 text-xs text-muted">
-                {artist.releases.length} release
-                {artist.releases.length === 1 ? "" : "s"}
+                {releases.length} release
+                {releases.length === 1 ? "" : "s"}
                 <span className="mx-1.5 opacity-40">•</span>
                 {listenedCount} heard
                 {isPaused && (
@@ -284,7 +307,7 @@ export default async function ArtistPage({
                 tab === "releases" ? "chip-on" : "text-muted hover:text-text"
               }`}
             >
-              Releases · {artist.releases.length}
+              Releases · {releases.length}
             </Link>
             <Link
               href={hrefWith({ tab: "songs" })}
@@ -304,7 +327,7 @@ export default async function ArtistPage({
           )}
 
           {/* Only worth offering once there is a ranking to read. */}
-          {tab === "releases" && artist.releases.some((r) => r.rating !== null) && (
+          {tab === "releases" && releases.some((r) => r.rating !== null) && (
             <div
               className="inline-flex items-center gap-0.5 rounded-full border border-line p-0.5"
               role="group"
@@ -333,7 +356,7 @@ export default async function ArtistPage({
         </div>
 
         {tab === "releases" ? (
-          artist.releases.length === 0 ? (
+          releases.length === 0 ? (
             <div className="panel px-5 py-12 text-center">
               <VinylIcon className="mx-auto size-8 text-white/15" />
               <p className="mt-3 text-sm text-muted">Nothing here yet.</p>
@@ -470,6 +493,41 @@ export default async function ArtistPage({
           </div>
         </details>
       </section>
+
+      {/* Kept deliberately quiet: text rather than covers, closed until asked
+          for, and last on the page. A record you have said isn't theirs should
+          take up as little of their page as a thing can while still being
+          findable when you want it back. */}
+      {removed.length > 0 && (
+        <section>
+          <details className="group/removed">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-[0.7rem] text-faint transition-colors hover:text-muted">
+              <span className="transition-transform group-open/removed:rotate-90">›</span>
+              Removed · {removed.length}
+            </summary>
+            <ul className="mt-2 flex flex-col gap-1">
+              {removed.map((release) => (
+                <li
+                  key={release.id}
+                  className="flex items-center justify-between gap-3 text-xs text-muted"
+                >
+                  <span className="min-w-0 truncate">
+                    {release.title}
+                    <span className="ml-1.5 text-faint">
+                      {release.releaseDate.getUTCFullYear()}
+                    </span>
+                  </span>
+                  <RemoveReleaseButton
+                    releaseId={release.id}
+                    removed
+                    className="shrink-0 text-xs text-faint transition-colors hover:text-accent"
+                  />
+                </li>
+              ))}
+            </ul>
+          </details>
+        </section>
+      )}
 
       <form action={deleteArtist.bind(null, artist.id)} className="border-t border-line pt-6">
         <ConfirmDeleteButton artistName={artist.name} />

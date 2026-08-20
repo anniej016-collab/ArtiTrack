@@ -255,6 +255,8 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const selectedCategories = await getSelectedCategories();
   const queueWhere = {
     listened: false,
+    // Taken off the artist as not really theirs.
+    removedAt: null,
     // Set aside is a third answer to "am I going to play this": out of the
     // queue, but not claiming to have been heard.
     setAside: false,
@@ -303,6 +305,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         where: {
           listened: true,
           listenedAt: { not: null },
+          removedAt: null,
           artist: { status: "ACTIVE" },
         },
         orderBy: { listenedAt: "desc" },
@@ -312,11 +315,11 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       // Most recently set aside first, so a decision can be walked back while
       // it's still fresh in mind.
       prisma.release.findMany({
-        where: { setAside: true, artist: { status: "ACTIVE" } },
+        where: { setAside: true, removedAt: null, artist: { status: "ACTIVE" } },
         orderBy: [{ setAsideAt: "desc" }, { releaseDate: "desc" }],
         include: { artist: { select: { name: true } } },
       }),
-      prisma.release.count({ where: { listened: true } }),
+      prisma.release.count({ where: { listened: true, removedAt: null } }),
     ]);
 
   const activeArtists = byName(unsortedActive, (artist) => artist.name);

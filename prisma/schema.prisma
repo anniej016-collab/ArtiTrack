@@ -113,6 +113,19 @@ model Release {
   /// point of the flag is to catch you up on what you missed.
   firstSeenAt DateTime?
 
+  /// When this was taken off the artist, or null if it is still theirs.
+  ///
+  /// For a record that isn't really theirs — a various-artists compilation they
+  /// guest on two tracks of, which a service files under their name. Deleting
+  /// it does not work: the row is what tells the next sync it already knows
+  /// about this release, so a deleted one comes straight back the following
+  /// night. Marking it is what makes removal stick.
+  ///
+  /// Reversible, like every other decision here. Nothing is destroyed — the
+  /// tracklist, notes and heard marks are all still on the row if it is put
+  /// back.
+  removedAt DateTime?
+
   /// Deliberately not planned for, without claiming to have heard it.
   ///
   /// A third state is needed because the other two both say the wrong thing

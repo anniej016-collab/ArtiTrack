@@ -538,6 +538,35 @@ export async function updateRelease(formData: FormData) {
 }
 
 /**
+ * Takes a release off an artist, or puts it back.
+ *
+ * For a record that is not really theirs: a various-artists compilation they
+ * appear on two tracks of, which a service files under their name. Deleting is
+ * no use, because the row is exactly what tells the next sync it already knows
+ * this release — remove it and it returns the following night. So the row stays
+ * and carries a mark, which every list checks.
+ *
+ * Nothing is destroyed. Put it back and its tracklist, notes, rating and heard
+ * marks are all still there.
+ */
+export async function setReleaseRemoved(releaseId: string, removed: boolean) {
+  const release = await prisma.release.findUnique({
+    where: { id: releaseId },
+    select: { artistId: true },
+  });
+  if (!release) return;
+
+  await prisma.release.update({
+    where: { id: releaseId },
+    data: { removedAt: removed ? new Date() : null },
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/releases/${releaseId}`);
+  revalidatePath(`/artists/${release.artistId}`);
+}
+
+/**
  * Shortlists a release, or takes it off the shortlist.
  *
  * Separate from the rating rather than derived from it: a rating says how good

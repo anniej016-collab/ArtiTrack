@@ -9,6 +9,7 @@ import { FavouriteSongs } from "@/components/FavouriteSongs";
 import { LoadReleaseTracksButton } from "@/components/LoadTracksButton";
 import { RatingStars } from "@/components/RatingStars";
 import { FavouriteReleaseButton } from "@/components/FavouriteReleaseButton";
+import { RemoveReleaseButton } from "@/components/RemoveReleaseButton";
 import { EditReleaseForm } from "@/components/EditReleaseForm";
 import { ReleaseNotes } from "@/components/ReleaseNotes";
 import { ManualTracklistForm } from "@/components/ManualTracklistForm";
@@ -105,6 +106,10 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <ListenedToggle releaseId={release.id} listened={release.listened} />
+            <RemoveReleaseButton
+              releaseId={release.id}
+              removed={release.removedAt !== null}
+            />
             {!release.listened && (
               <SetAsideToggle
                 releaseId={release.id}
