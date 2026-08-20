@@ -8,7 +8,7 @@ import {
   type SearchState,
 } from "@/lib/actions";
 import { CheckIcon, VinylIcon } from "@/components/icons";
-import { SourceBadge, SpotifySkippedNote } from "@/components/SearchSourceNote";
+import { SourceBadge } from "@/components/SearchSourceNote";
 
 const emptySearch: SearchState = {
   query: "",
@@ -135,10 +135,6 @@ export function ArtistSearch({
         !state.error && (
           <p className="text-sm text-faint">No artists found for “{state.query}”.</p>
         )}
-
-      {!finished && state.results.length > 0 && (
-        <SpotifySkippedNote configured={state.spotifyConfigured} />
-      )}
 
       {!finished && state.usedFallback && state.results.length > 0 && (
         <p className="text-xs text-faint">

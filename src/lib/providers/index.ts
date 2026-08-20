@@ -75,8 +75,12 @@ export const TRACK_SOURCES = SYNCABLE_SOURCES.filter(
  * A service that fails is left out rather than taking the others with it.
  */
 export async function searchEveryService(query: string): Promise<ProviderArtist[]> {
+  // Deezer first here too, so the top match is from the service that actually
+  // delivers a catalogue. Spotify is still on the list — reaching it is the
+  // point of this panel — just not the default anyone lands on by pressing the
+  // first row.
   const sources: ProviderKey[] = spotify.isConfigured()
-    ? ["spotify", "deezer", "musicbrainz"]
+    ? ["deezer", "spotify", "musicbrainz"]
     : ["deezer", "musicbrainz"];
 
   const found = await Promise.all(
@@ -112,13 +116,19 @@ export function supportsTracks(source: string): boolean {
 }
 
 /**
- * Searches Spotify, then Deezer, then MusicBrainz, stopping at the first that
- * answers.
+ * Searches Deezer, then MusicBrainz, stopping at the first that answers.
  *
- * Spotify leads because its catalogue is the fullest of the three, which is why
- * it was added: Deezer was quietly missing releases that plainly exist. Deezer
- * stays behind it — it needs no credentials, so it still works when Spotify is
- * unconfigured or refusing, and it carries some things Spotify does not.
+ * Spotify is deliberately not in this chain, though it is registered and
+ * reachable. It was put in front of Deezer because its catalogue is fuller —
+ * Deezer is quietly missing releases that plainly exist — and it has not yet
+ * been made to work: pointing an artist at it fetched no releases. Leading with
+ * a service that cannot deliver a catalogue means every newly added artist
+ * arrives empty, which is worse than an incomplete one.
+ *
+ * So Deezer leads again until that is fixed. Spotify is still offered by name
+ * in the move-an-artist flow, where it is a deliberate choice rather than a
+ * silent default, and where an artist's existing releases stay put if it fails.
+ *
  * MusicBrainz is last and covers what no streaming service does: independent,
  * regional and older material, with no artwork and no song lists.
  *
@@ -129,16 +139,6 @@ export function supportsTracks(source: string): boolean {
 export async function searchArtistsEverywhere(
   query: string,
 ): Promise<{ results: ProviderArtist[]; usedFallback: boolean }> {
-  if (spotify.isConfigured()) {
-    try {
-      const results = await PROVIDERS.spotify.searchArtists(query);
-      if (results.length > 0) return { results, usedFallback: false };
-    } catch {
-      // Bad credentials or a service having a moment shouldn't take the search
-      // down with it — there are two more to ask.
-    }
-  }
-
   const primary = await PROVIDERS.deezer.searchArtists(query);
   if (primary.length > 0) return { results: primary, usedFallback: false };
 

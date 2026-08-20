@@ -3,7 +3,13 @@ import { MOCK_PORT } from "../playwright.config";
 import { addArtist, openArtist, resetDatabase, resetPreferences, runSql } from "./helpers";
 
 /**
- * Spotify leads the search, and an artist can be moved onto it afterwards.
+ * Deezer leads the search; Spotify is reached by moving an artist onto it.
+ *
+ * Spotify did lead, and was put back behind Deezer because pointing an artist
+ * at it fetched no releases — a service that cannot deliver a catalogue must
+ * not be the one every newly added artist silently lands on. It stays offered
+ * by name in the move panel, where choosing it is deliberate and a failure
+ * leaves the artist's existing releases where they are.
  *
  * The move is the part worth pinning down: provider ids never agree between
  * services, so a switch that recognised nothing would add the whole catalogue
@@ -29,7 +35,21 @@ test.afterEach(async ({ page }, testInfo) => {
   });
 });
 
-test("searching finds artists through Spotify first", async ({ page }) => {
+/** Moves the open artist onto Spotify the way a person would. */
+async function moveToSpotify(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: /Check a different service/ }).click();
+  await page.getByRole("button", { name: "Search" }).click();
+
+  const panel = page.locator("div.panel").filter({ hasText: "Which one are they?" });
+  const match = panel
+    .locator("li")
+    .filter({ has: page.getByText("Spotify", { exact: true }) })
+    .first();
+  await expect(match).toBeVisible();
+  await match.getByRole("button", { name: "This one" }).click();
+}
+
+test("searching finds artists through Deezer, not Spotify", async ({ page }) => {
   await page.goto("/");
   await page.fill('input[name="query"]', "Testhead");
   await page.getByRole("button", { name: "Search" }).click();
@@ -39,14 +59,15 @@ test("searching finds artists through Spotify first", async ({ page }) => {
 
   // The stand-in serves a different picture per service, which is how the test
   // can tell which one answered.
-  await expect(row.locator('img[src*="spotify-"]')).toBeVisible();
+  await expect(row.locator('img[src*="spotify-"]')).toHaveCount(0);
+  await expect(row.locator('img[src*="/img/testhead"]')).toBeVisible();
 });
 
-test("an artist added through Spotify syncs from it", async ({ page }) => {
+test("an artist added from the search syncs from Deezer", async ({ page }) => {
   await addArtist(page, "Testhead", { heardAlready: true });
   await openArtist(page, "Testhead");
 
-  await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
+  await expect(page.getByText(/Releases come from Deezer/)).toBeVisible();
   await expect(page.locator("#to-listen li")).toHaveCount(0);
 });
 
@@ -60,18 +81,18 @@ test("moving an artist to another service doesn't list everything twice", async 
   expect(before).toBeGreaterThan(2);
 
   /*
-   * Force the artist back onto Deezer the way the link control does, then let a
-   * check run. Deezer's ids for these records differ from Spotify's, so only
+   * Force the artist onto Spotify the way the link control does, then let a
+   * check run. Spotify's ids for these records differ from Deezer's, so only
    * matching on title and year can recognise them.
    */
   await runSql(
-    `UPDATE "Artist" SET "syncSource" = 'deezer', "syncExternalId" = '399' WHERE name = 'Testhead'`,
+    `UPDATE "Artist" SET "syncSource" = 'spotify', "syncExternalId" = 'sp-399' WHERE name = 'Testhead'`,
   );
   await runSql(`UPDATE "Release" SET "externalId" = NULL WHERE "externalId" IS NOT NULL`);
 
   await page.reload();
   await page.getByRole("button", { name: /Check for new/ }).click();
-  await expect(page.getByText(/Releases come from Deezer/)).toBeVisible();
+  await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
 
   // Same records, re-pointed — not a second copy of each.
   await expect(page.locator("a[href^='/releases/']")).toHaveCount(before);
@@ -90,25 +111,18 @@ test("an artist already on a service can be moved to another one", async ({ page
    * actually is, and moves them the way a person would.
    */
   await addArtist(page, "Testhead", { heardAlready: true });
-  await runSql(
-    `UPDATE "Artist" SET "syncSource" = 'deezer', "syncExternalId" = '399' WHERE name = 'Testhead'`,
-  );
 
   await openArtist(page, "Testhead");
   await expect(page.getByText(/Releases come from Deezer/)).toBeVisible();
   const before = await page.locator("a[href^='/releases/']").count();
   expect(before).toBeGreaterThan(2);
 
-  await page.getByRole("button", { name: /Check a different service/ }).click();
-  await page.getByRole("button", { name: "Search" }).click();
-
   /*
-   * One row at a time. A single pending flag put every result into "Linking…"
-   * together, so picking one match looked like picking all of them.
+   * Picks the Spotify row specifically. Deezer leads the list now, and pressing
+   * whatever happens to be first would "move" the artist to the service they
+   * are already on and prove nothing.
    */
-  const matches = page.getByRole("button", { name: "This one" });
-  await expect(matches.first()).toBeVisible();
-  await matches.first().click();
+  await moveToSpotify(page);
 
   // Says so outright. The panel closing used to be the only sign it worked, and
   // once the panel stopped closing there was no sign at all.
@@ -125,28 +139,16 @@ test("an artist already on a service can be moved to another one", async ({ page
 
 test("every match says which service it came from", async ({ page }) => {
   /*
-   * Search tries Spotify, then Deezer, then MusicBrainz, and shows whichever
-   * answers first — sensible, and until now silent. Someone reaching for
-   * Spotify could be handed Deezer results, pick one, and have no way to work
-   * out why nothing changed.
+   * Search shows whichever service answers first, and until now did so
+   * silently. Someone expecting one service could be handed another's results,
+   * pick one, and have no way to work out why nothing changed.
    */
   await page.goto("/");
   await page.fill('input[name="query"]', "Testhead");
   await page.getByRole("button", { name: "Search" }).click();
 
   const row = page.locator("li").filter({ hasText: "Testhead" }).first();
-  await expect(row.getByText("Spotify", { exact: true })).toBeVisible();
-});
-
-test("says so when Spotify was skipped for want of credentials", async ({ page }) => {
-  // Nothing here can unset the server's credentials, so the note is checked
-  // where it is decided: absent when configured, which is this suite's state.
-  await page.goto("/");
-  await page.fill('input[name="query"]', "Testhead");
-  await page.getByRole("button", { name: "Search" }).click();
-
-  await expect(page.locator("li").filter({ hasText: "Testhead" }).first()).toBeVisible();
-  await expect(page.getByText(/Spotify isn't set up/)).toHaveCount(0);
+  await expect(row.getByText("Deezer", { exact: true })).toBeVisible();
 });
 
 test("moving an artist offers every service, not just the one they are on", async ({
@@ -154,13 +156,12 @@ test("moving an artist offers every service, not just the one they are on", asyn
 }) => {
   /*
    * Search normally stops at the first service that answers, which is right for
-   * adding an artist and exactly wrong for moving one: an artist already on
-   * Spotify was only ever offered Spotify again, so there was no way back to
-   * Deezer.
+   * adding an artist and exactly wrong for moving one: it would only ever offer
+   * the service they are already on, so there was no way across at all.
    */
   await addArtist(page, "Testhead", { heardAlready: true });
   await openArtist(page, "Testhead");
-  await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
+  await expect(page.getByText(/Releases come from Deezer/)).toBeVisible();
 
   await page.getByRole("button", { name: /Check a different service/ }).click();
   await page.getByRole("button", { name: "Search" }).click();
@@ -222,6 +223,7 @@ test("a record listed once per country is added once", async ({ page }) => {
 
   await addArtist(page, "Testhead", { heardAlready: true });
   await openArtist(page, "Testhead");
+  await moveToSpotify(page);
 
   await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
   await expect(page.getByRole("link", { name: /In Testing/ })).toHaveCount(1);
@@ -247,6 +249,7 @@ test("a catalogue too deep to page through keeps what it did reach", async ({
 
   await addArtist(page, "Testhead", { heardAlready: true });
   await openArtist(page, "Testhead");
+  await moveToSpotify(page);
 
   await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
   await expect(page.getByRole("link", { name: /In Testing/ })).toHaveCount(1);
@@ -265,11 +268,7 @@ test("a refusal on the very first page is reported, not swallowed", async ({
   await openArtist(page, "Testhead");
   await spotifyShape(page, { refusesPast: 0 });
 
-  await page.getByRole("button", { name: /Check a different service/ }).click();
-  await page.getByRole("button", { name: "Search" }).click();
-  const match = page.getByRole("button", { name: "This one" }).first();
-  await expect(match).toBeVisible();
-  await match.click();
+  await moveToSpotify(page);
 
   await expect(page.getByText(/maximum offset is 1000/)).toBeVisible();
 });

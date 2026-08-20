@@ -31,7 +31,7 @@ async function importFile(page: import("@playwright/test").Page) {
  * these tests are about linking rather than about which service that is. Named
  * once so a change of order is one edit here, not nine.
  */
-const LEADING_SERVICE = /checked against Spotify/;
+const LEADING_SERVICE = /checked against Deezer/;
 
 async function openTesthead(page: import("@playwright/test").Page) {
   await page.goto("/");
@@ -125,7 +125,7 @@ test("an artist added from a service is watched from the start", async ({ page }
   await page.locator("#following").getByRole("link", { name: "Test Sault" }).first().click();
   await page.waitForURL(/\/artists\//);
 
-  await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
+  await expect(page.getByText(/Releases come from Deezer/)).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Check for new releases automatically/ }),
   ).toHaveCount(0);

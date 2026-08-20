@@ -3,11 +3,10 @@ import { providerLabel } from "@/lib/providers";
 /**
  * Which service a match came from, on the match itself.
  *
- * Search tries Spotify, then Deezer, then MusicBrainz, and shows whichever
- * answers first — sensible, and until now completely silent. Someone who came
- * here to reach Spotify could be handed Deezer results, pick one, and have no
- * way to work out why nothing changed. The results have always known where they
- * came from; they just never said.
+ * Search shows whichever service answers first, and until now did so silently.
+ * Someone who came here expecting one service could be handed another's
+ * results, pick one, and have no way to work out why nothing changed. The
+ * results have always known where they came from; they just never said.
  */
 export function SourceBadge({ source }: { source: string }) {
   return (
@@ -20,10 +19,10 @@ export function SourceBadge({ source }: { source: string }) {
 /**
  * Says outright when Spotify was skipped for want of credentials.
  *
- * The one case where the fallback is not merely a detail: the whole reason for
- * adding Spotify was a catalogue Deezer is missing, so quietly answering with
- * Deezer gives exactly the wrong impression — that Spotify was asked and had
- * nothing.
+ * Only for the panel that moves an artist between services, which is the one
+ * place Spotify is searched. Offering "every service" and quietly listing two
+ * of the three gives exactly the wrong impression — that Spotify was asked and
+ * had nothing, rather than never asked at all.
  */
 export function SpotifySkippedNote({ configured }: { configured: boolean }) {
   if (configured) return null;
