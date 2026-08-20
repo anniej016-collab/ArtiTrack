@@ -299,7 +299,23 @@ test("a real listen after a deliberate un-tick still counts", async ({
   await openRelease(page, "In Testing");
 
   await page.getByRole("button", { name: "Heard", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Mark heard", exact: true })).toBeVisible();
+
+  /*
+   * Wait on the database, not the button. The button flips the moment it is
+   * pressed — that is the point of it — so it says nothing about whether the
+   * server has recorded the un-tick yet. Ageing a row that has not been written
+   * matches nothing, leaves unheardAt recent, and the re-tick below is then
+   * read as undoing a mistap: no date, nothing in "Recently listened", and a
+   * failure describing a bug that isn't there.
+   */
+  await expect
+    .poll(async () => {
+      const { rows } = await runSql(
+        `SELECT count(*)::int AS n FROM "Release" WHERE "unheardAt" IS NOT NULL`,
+      );
+      return rows[0].n as number;
+    })
+    .toBeGreaterThan(0);
 
   // Age the un-tick past the window, which is the one thing a test can't wait for.
   await runSql(
