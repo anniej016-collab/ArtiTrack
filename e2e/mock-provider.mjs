@@ -38,6 +38,22 @@ const ARTISTS = [
 /** Pictures changed since, keyed by artist id. Set through /control/new-picture. */
 const newPictures = {};
 
+/*
+ * How Spotify's album listing misbehaves, which is the whole reason these
+ * knobs exist.
+ *
+ * Spotify lists a record once per country it was sold in, each copy under its
+ * own id. Naming a market collapses that to (nearly) one copy each — "nearly",
+ * because a re-release or a market-specific edition still comes through twice,
+ * so the default here is two rather than one: folding duplicates together is
+ * not an edge case to opt into, it is what every listing needs.
+ *
+ * `spotifyRefusesPast` is the depth beyond which Spotify answers a bare 400
+ * instead of an empty page. Real value is 1000; a test lowers it to reach the
+ * refusal without needing a thousand fixtures.
+ */
+const spotifyShape = { copiesWithMarket: 2, copiesWithoutMarket: 40, refusesPast: 1000 };
+
 const album = (id, title, date, type) => ({
   id,
   title,
@@ -160,8 +176,8 @@ const MB_RELEASE_GROUPS = {
 
 createServer((req, res) => {
   const url = new URL(req.url, SELF);
-  const json = (body) => {
-    res.writeHead(200, { "Content-Type": "application/json" });
+  const json = (body, status = 200) => {
+    res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify(body));
   };
 
@@ -185,6 +201,16 @@ createServer((req, res) => {
   match = url.pathname.match(/^\/control\/new-picture\/(\d+)$/);
   if (match) {
     newPictures[match[1]] = `${SELF}/img/updated-${match[1]}`;
+    return json({ ok: true });
+  }
+
+  // Reshapes the Spotify album listing for one test: how many duplicate copies
+  // of each record it emits, and how far in it will look before refusing.
+  if (url.pathname === "/control/spotify-shape") {
+    for (const key of ["copiesWithMarket", "copiesWithoutMarket", "refusesPast"]) {
+      const value = url.searchParams.get(key);
+      if (value !== null) spotifyShape[key] = Number(value);
+    }
     return json({ ok: true });
   }
 
@@ -240,17 +266,48 @@ createServer((req, res) => {
 
   match = url.pathname.match(/^\/spotify\/v1\/artists\/sp-(\d+)\/albums$/);
   if (match) {
-    const albums = (ALBUMS[match[1]] ?? []).filter((a) => a.release_date !== "0000-00-00");
-    return json({
-      items: albums.map((album) => ({
-        id: `sp-${album.id}`,
+    const artistId = match[1];
+    const market = url.searchParams.get("market");
+    const limit = Number(url.searchParams.get("limit") ?? 20);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+
+    // Spotify's own wording, and its own bare 400, for looking too far in.
+    if (offset >= spotifyShape.refusesPast) {
+      return json(
+        { error: { status: 400, message: "Bad offset, maximum offset is 1000" } },
+        400,
+      );
+    }
+
+    const albums = (ALBUMS[artistId] ?? []).filter((a) => a.release_date !== "0000-00-00");
+    const copies = market
+      ? spotifyShape.copiesWithMarket
+      : spotifyShape.copiesWithoutMarket;
+
+    // One entry per record per country, each under a different id — which is
+    // exactly why they cannot be told apart by id.
+    const rows = albums.flatMap((album) =>
+      Array.from({ length: copies }, (_, copy) => ({
+        id: copy === 0 ? `sp-${album.id}` : `sp-${album.id}-c${copy}`,
         name: album.title,
         album_type: album.record_type === "ep" ? "single" : album.record_type,
         release_date: album.release_date,
         release_date_precision: "day",
         images: [{ url: album.cover_medium }],
       })),
-      next: null,
+    );
+
+    const after = offset + limit;
+    const query = new URLSearchParams({ offset: String(after), limit: String(limit) });
+    if (market) query.set("market", market);
+
+    return json({
+      items: rows.slice(offset, after),
+      // Absolute, the way Spotify sends it.
+      next:
+        after < rows.length
+          ? `${SELF}/spotify/v1/artists/sp-${artistId}/albums?${query}`
+          : null,
     });
   }
 

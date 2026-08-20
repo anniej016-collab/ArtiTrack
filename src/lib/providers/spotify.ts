@@ -1,5 +1,6 @@
 import type { ReleaseType } from "@/generated/prisma/enums";
 import type { ProviderArtist, ProviderRelease, ProviderTrack } from "@/lib/providers/deezer";
+import { releaseMatchKey } from "@/lib/release-match";
 
 /*
  * Spotify needs credentials, which is the whole reason it wasn't here first.
@@ -92,6 +93,15 @@ export function forgetToken() {
   cached = null;
 }
 
+/** Spotify's own words for why it refused, when it offers any. */
+async function errorMessage(response: Response): Promise<string | null> {
+  const body = (await response.json().catch(() => null)) as {
+    error?: { message?: unknown };
+  } | null;
+  const message = body?.error?.message;
+  return typeof message === "string" && message.trim() !== "" ? message : null;
+}
+
 async function getJson(path: string): Promise<unknown> {
   const token = await accessToken();
 
@@ -105,6 +115,8 @@ async function getJson(path: string): Promise<unknown> {
     throw new SpotifyError("Could not reach Spotify. Check your connection.", { cause });
   }
 
+  const detail = response.ok ? null : await errorMessage(response);
+
   if (response.status === 401) {
     // The token went stale early. Drop it so the next call fetches another
     // rather than repeating a request that can only fail again.
@@ -115,7 +127,16 @@ async function getJson(path: string): Promise<unknown> {
     throw new SpotifyError("Spotify is rate limiting. Try again in a moment.");
   }
   if (!response.ok) {
-    throw new SpotifyError(`Spotify returned ${response.status}. Try again in a moment.`);
+    /*
+     * Spotify explains its own refusals, and the explanation is the whole
+     * diagnosis: "invalid id" and "offset must be less than 1000" are the same
+     * bare 400 otherwise, with nothing to tell them apart from the outside.
+     * Reporting only the number cost a deploy and a round trip to learn what
+     * the response had said all along.
+     */
+    throw new SpotifyError(
+      `Spotify returned ${response.status}${detail ? `: ${detail}` : ""}.`,
+    );
   }
 
   return response.json().catch(() => null);
@@ -227,6 +248,13 @@ export async function fetchArtist(externalId: string): Promise<ProviderArtist | 
 }
 
 /**
+ * Spotify refuses to look further into a list than this, answering a bare 400
+ * rather than an empty page. Asking anyway is how a long catalogue turned into
+ * "Spotify returned 400" and no releases at all.
+ */
+const MAX_OFFSET = 1000;
+
+/**
  * Follows Spotify's paging until it runs out.
  *
  * Fifty per page is the maximum, and a large discography is well past that —
@@ -240,16 +268,56 @@ async function allPages(firstPath: string): Promise<Record<string, unknown>[]> {
   // A ceiling rather than a while(true): a paging bug upstream should cost a
   // slow request, not an endless one.
   for (let page = 0; page < 40 && path; page += 1) {
-    const body: unknown = await getJson(path);
+    let body: unknown;
+    try {
+      body = await getJson(path);
+    } catch (cause) {
+      /*
+       * The first page failing means the request itself was wrong — a bad id,
+       * a refused key — and there is nothing to show, so it is reported.
+       *
+       * A later page failing is a different thing entirely: most of the
+       * catalogue is already in hand, and throwing it away to report the
+       * shortfall serves nobody. Spotify's own paging is what asked for the
+       * page that failed, so this is upstream's edge to run into, not the
+       * user's mistake to be told about.
+       */
+      if (page === 0) throw cause;
+      break;
+    }
+
     collected.push(...items(body));
 
     const next = str(asRecord(body)?.["next"]);
     // Spotify returns an absolute URL; everything here speaks in paths.
     path = next ? next.replace(API_BASE, "") : null;
+
+    // Stop before asking for a page Spotify will refuse outright.
+    if (path && offsetOf(path) >= MAX_OFFSET) break;
   }
 
   return collected;
 }
+
+/** The offset a paging URL is asking for, or 0 when it doesn't say. */
+function offsetOf(path: string): number {
+  const found = /[?&]offset=(\d+)/.exec(path);
+  return found ? Number(found[1]) : 0;
+}
+
+/**
+ * Which country's catalogue to ask for.
+ *
+ * Not a filter anyone asked for — it is the only way to stop Spotify listing
+ * the same record once per country it was sold in, each copy under a different
+ * id. Left off, a forty-record discography comes back as a few thousand rows,
+ * and paging through them runs past the depth Spotify will serve and is
+ * refused outright, so the artist ends up with no releases at all.
+ *
+ * The largest catalogue of the lot, and a worldwide release is in it. Anything
+ * that does slip through still gets folded together below.
+ */
+const MARKET = process.env.SPOTIFY_MARKET ?? "US";
 
 export async function fetchArtistReleases(
   externalArtistId: string,
@@ -258,7 +326,8 @@ export async function fetchArtistReleases(
     `/artists/${encodeURIComponent(externalArtistId)}/albums` +
       // Everything they released, but not records they merely guest on: an
       // "appears_on" credit is somebody else's album.
-      `?include_groups=album,single,compilation&limit=50`,
+      `?include_groups=album,single,compilation&limit=50` +
+      `&market=${encodeURIComponent(MARKET)}`,
   );
 
   const releases = albums.flatMap((item) => {
@@ -280,13 +349,24 @@ export async function fetchArtistReleases(
     ];
   });
 
-  // Spotify lists the same record once per market it was released in.
-  const seen = new Set<string>();
-  return releases.filter((release) => {
-    if (seen.has(release.externalId)) return false;
-    seen.add(release.externalId);
-    return true;
-  });
+  /*
+   * Fold the duplicates together.
+   *
+   * Keying this on the id was the bug: every market's copy of a record carries
+   * a *different* id, which is exactly what makes them duplicates worth
+   * removing, so matching on it removed nothing at all. Title and year is what
+   * the rest of the app already uses to decide two records are the same one.
+   */
+  const byRecord = new Map<string, ProviderRelease>();
+  for (const release of releases) {
+    const key = releaseMatchKey(release.title, release.releaseDate);
+    const kept = byRecord.get(key);
+    // Prefer a copy that has artwork; otherwise the first one wins.
+    if (!kept) byRecord.set(key, release);
+    else if (!kept.coverUrl && release.coverUrl) byRecord.set(key, release);
+  }
+
+  return [...byRecord.values()];
 }
 
 export async function fetchReleaseTracks(

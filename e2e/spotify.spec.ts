@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { MOCK_PORT } from "../playwright.config";
 import { addArtist, openArtist, resetDatabase, resetPreferences, runSql } from "./helpers";
 
 /**
@@ -12,6 +13,20 @@ test.beforeEach(async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "not device-specific");
   await resetDatabase();
   await resetPreferences(page);
+});
+
+/*
+ * The stand-in outlives every test in the run, so a test that reshapes its
+ * Spotify listing has to put it back — otherwise "refuses past nothing" leaks
+ * into whatever runs next and fails something unrelated.
+ */
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.project.name !== "desktop") return;
+  await spotifyShape(page, {
+    copiesWithMarket: 2,
+    copiesWithoutMarket: 40,
+    refusesPast: 1000,
+  });
 });
 
 test("searching finds artists through Spotify first", async ({ page }) => {
@@ -177,4 +192,84 @@ test("a service that fails on the first fetch says so instead of erroring out", 
 
   // Still the artist page, with the reason on it rather than an error screen.
   await expect(page.getByRole("heading", { name: "Testhead", level: 1 })).toBeVisible();
+});
+
+/** Reshapes the stand-in's album listing the way real Spotify varies. */
+async function spotifyShape(
+  page: import("@playwright/test").Page,
+  shape: Partial<{
+    copiesWithMarket: number;
+    copiesWithoutMarket: number;
+    refusesPast: number;
+  }>,
+) {
+  const query = new URLSearchParams(
+    Object.entries(shape).map(([key, value]) => [key, String(value)]),
+  );
+  const response = await page.request.get(
+    `http://127.0.0.1:${MOCK_PORT}/control/spotify-shape?${query}`,
+  );
+  expect(response.ok()).toBe(true);
+}
+
+test("a record listed once per country is added once", async ({ page }) => {
+  /*
+   * Spotify lists the same record separately for every country it was sold in,
+   * each copy under its own id. De-duplicating on that id therefore removed
+   * nothing at all, and the copies would have arrived as separate releases.
+   */
+  await spotifyShape(page, { copiesWithMarket: 6 });
+
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await openArtist(page, "Testhead");
+
+  await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /In Testing/ })).toHaveCount(1);
+
+  // Six copies each of six usable records is thirty-six rows, and every one of
+  // them would have been a release of its own.
+  const counted = await runSql(
+    `SELECT count(*)::int AS n FROM "Release" WHERE title = 'In Testing'`,
+  );
+  expect(counted.rows[0].n).toBe(1);
+});
+
+test("a catalogue too deep to page through keeps what it did reach", async ({
+  page,
+}) => {
+  /*
+   * Spotify refuses to look past a fixed depth, answering a bare 400 rather
+   * than an empty page. That refusal used to escape as "Spotify returned 400"
+   * with no releases at all — throwing away everything already fetched to
+   * report that there was more. Most of a catalogue beats none of it.
+   */
+  await spotifyShape(page, { copiesWithMarket: 30, refusesPast: 100 });
+
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await openArtist(page, "Testhead");
+
+  await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /In Testing/ })).toHaveCount(1);
+});
+
+test("a refusal on the very first page is reported, not swallowed", async ({
+  page,
+}) => {
+  /*
+   * The other half of the rule above: nothing was fetched, so there is nothing
+   * to show and no reason to pretend otherwise. Spotify's own explanation is
+   * carried through, because "400" alone cost a deploy and a round trip to
+   * learn what the response had said all along.
+   */
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await openArtist(page, "Testhead");
+  await spotifyShape(page, { refusesPast: 0 });
+
+  await page.getByRole("button", { name: /Check a different service/ }).click();
+  await page.getByRole("button", { name: "Search" }).click();
+  const match = page.getByRole("button", { name: "This one" }).first();
+  await expect(match).toBeVisible();
+  await match.click();
+
+  await expect(page.getByText(/maximum offset is 1000/)).toBeVisible();
 });

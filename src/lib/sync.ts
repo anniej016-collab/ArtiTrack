@@ -1,3 +1,4 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { alignSongsWithRelease } from "@/lib/listening";
 import { songKey } from "@/lib/song-identity";
@@ -69,61 +70,87 @@ export async function persistReleases(
     unclaimed.set(key, unclaimed.has(key) ? "" : release.id);
   }
 
-  let added = 0;
-  let updated = 0;
+  /*
+   * Worked out first, sent afterwards.
+   *
+   * Every release used to be its own round trip, awaited before the next was
+   * even considered — fine for the handful a nightly check turns up, and
+   * punishing for a back catalogue arriving all at once, which is exactly when
+   * someone is sitting watching a spinner. The decisions below are pure
+   * bookkeeping against rows already in hand; only the writing needs the
+   * database, and it can go in two batches instead of hundreds.
+   */
+  const updates: Prisma.PrismaPromise<unknown>[] = [];
+  const creates: Prisma.ReleaseCreateManyInput[] = [];
+  const queued = new Set<string>();
+  const arrivedAt = newArrival ? new Date() : null;
 
   for (const release of releases) {
     if (known.has(release.externalId)) {
-      await prisma.release.update({
-        where: { artistId_externalId: { artistId, externalId: release.externalId } },
-        // Refresh metadata that can change upstream, but never touch the
-        // listened fields: those are the user's own record, not the provider's.
-        data: {
-          title: release.title,
-          type: release.type,
-          releaseDate: release.releaseDate,
-          coverUrl: release.coverUrl,
-        },
-      });
-      updated += 1;
+      updates.push(
+        prisma.release.update({
+          where: { artistId_externalId: { artistId, externalId: release.externalId } },
+          // Refresh metadata that can change upstream, but never touch the
+          // listened fields: those are the user's own record, not the
+          // provider's.
+          data: {
+            title: release.title,
+            type: release.type,
+            releaseDate: release.releaseDate,
+            coverUrl: release.coverUrl,
+          },
+        }),
+      );
       continue;
     }
 
-    const match = unclaimed.get(releaseMatchKey(release.title, release.releaseDate));
+    const key = releaseMatchKey(release.title, release.releaseDate);
+    const match = unclaimed.get(key);
     if (match) {
       // Adopt it: the row keeps its tracklist, notes and listened state, and
       // gains the provider id so later syncs recognise it outright.
-      await prisma.release.update({
-        where: { id: match },
-        data: {
-          externalId: release.externalId,
-          // An imported cover is chosen; a provider's is whatever it has. Only
-          // fill a gap.
-          coverUrl: existing.find((row) => row.id === match)?.coverUrl ?? release.coverUrl,
-        },
-      });
-      unclaimed.delete(releaseMatchKey(release.title, release.releaseDate));
-      updated += 1;
+      updates.push(
+        prisma.release.update({
+          where: { id: match },
+          data: {
+            externalId: release.externalId,
+            // An imported cover is chosen; a provider's is whatever it has.
+            // Only fill a gap.
+            coverUrl:
+              existing.find((row) => row.id === match)?.coverUrl ?? release.coverUrl,
+          },
+        }),
+      );
+      unclaimed.delete(key);
       continue;
     }
 
-    await prisma.release.create({
-      data: {
-        artistId,
-        externalId: release.externalId,
-        title: release.title,
-        type: release.type,
-        releaseDate: release.releaseDate,
-        coverUrl: release.coverUrl,
-        listened: markListened,
-        listenedAt: null,
-        arrivedAt: newArrival ? new Date() : null,
-      },
+    /*
+     * Writing the batch in one statement means one bad row rejects all of
+     * them, where creating them one at a time only ever risked the one. Every
+     * provider already folds its own duplicates away, so this is a belt to
+     * that braces — cheap, and the alternative is a sync that fails whole.
+     */
+    if (queued.has(release.externalId)) continue;
+    queued.add(release.externalId);
+
+    creates.push({
+      artistId,
+      externalId: release.externalId,
+      title: release.title,
+      type: release.type,
+      releaseDate: release.releaseDate,
+      coverUrl: release.coverUrl,
+      listened: markListened,
+      listenedAt: null,
+      arrivedAt,
     });
-    added += 1;
   }
 
-  return { added, updated };
+  if (updates.length > 0) await prisma.$transaction(updates);
+  if (creates.length > 0) await prisma.release.createMany({ data: creates });
+
+  return { added: creates.length, updated: updates.length };
 }
 
 /**
