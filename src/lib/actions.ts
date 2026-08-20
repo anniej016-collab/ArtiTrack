@@ -257,9 +257,15 @@ export async function linkArtistForSync(
   // The first check after attaching a service is their back catalogue arriving
   // late, not new releases — flagging a twenty-year discography as news would
   // make the New releases group useless the moment it was created.
-  await syncArtist(artistId, { newArrival: false });
+  const result = await syncArtist(artistId, { newArrival: false });
 
   revalidatePath("/", "layout");
+
+  // Handed back so the control can say what happened. Linking used to be its
+  // own confirmation, because the whole panel vanished once an artist had a
+  // service; now that it stays available for changing service, a successful
+  // link and a link that silently failed looked exactly alike.
+  return { added: result?.added ?? 0, updated: result?.updated ?? 0 };
 }
 
 export async function unlinkArtistFromSync(artistId: string) {

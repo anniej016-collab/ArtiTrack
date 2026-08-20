@@ -37,20 +37,46 @@ export function LinkForSync({
   currentSource?: string | null;
 }) {
   const [state, action, searching] = useActionState(searchArtistsAction, empty);
-  const [linking, startLinking] = useTransition();
+  const [, startLinking] = useTransition();
   const [open, setOpen] = useState(false);
+  /*
+   * Which result is being linked, rather than merely that one is.
+   *
+   * A single flag put every row into "Linking…" at once, so pressing one match
+   * looked like pressing all of them — and told you nothing about which was
+   * actually being used.
+   */
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [done, setDone] = useState<{ label: string; added: number } | null>(null);
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="btn-ghost px-3 py-1.5 text-xs font-medium"
-      >
-        {currentSource
-          ? "Check a different service for their releases"
-          : "Check for new releases automatically"}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setDone(null);
+            setOpen(true);
+          }}
+          className="btn-ghost px-3 py-1.5 text-xs font-medium"
+        >
+          {currentSource
+            ? "Check a different service for their releases"
+            : "Check for new releases automatically"}
+        </button>
+
+        {/* Said outright, because it used to be implied by this whole panel
+            disappearing — and once it stopped disappearing, a link that worked
+            and one that failed looked exactly the same. */}
+        {done && (
+          <p className="text-xs text-success">
+            Now checking {done.label}
+            {done.added > 0
+              ? ` — ${done.added} release${done.added === 1 ? "" : "s"} added.`
+              : " — nothing new to add."}
+          </p>
+        )}
+      </div>
     );
   }
 
@@ -122,20 +148,29 @@ export function LinkForSync({
               </div>
               <button
                 type="button"
-                disabled={linking}
-                onClick={() =>
+                disabled={linkingId !== null}
+                onClick={() => {
+                  setLinkingId(result.externalId);
                   startLinking(async () => {
-                    await linkArtistForSync(
+                    const outcome = await linkArtistForSync(
                       artistId,
                       result.source,
                       result.externalId,
                       result.imageUrl,
                     );
-                  })
-                }
-                className="btn-primary shrink-0 px-3 py-1.5 text-xs"
+                    setLinkingId(null);
+                    setDone({
+                      label: providerLabel(result.source),
+                      added: outcome?.added ?? 0,
+                    });
+                    // Closing is the other half of saying it worked: leaving the
+                    // search sitting there reads as nothing having happened.
+                    setOpen(false);
+                  });
+                }}
+                className="btn-primary shrink-0 px-3 py-1.5 text-xs disabled:opacity-60"
               >
-                {linking ? "Linking…" : "This one"}
+                {linkingId === result.externalId ? "Linking…" : "This one"}
               </button>
             </li>
           ))}

@@ -86,7 +86,19 @@ test("an artist already on a service can be moved to another one", async ({ page
 
   await page.getByRole("button", { name: /Check a different service/ }).click();
   await page.getByRole("button", { name: "Search" }).click();
-  await page.getByRole("button", { name: "This one" }).first().click();
+
+  /*
+   * One row at a time. A single pending flag put every result into "Linking…"
+   * together, so picking one match looked like picking all of them.
+   */
+  const matches = page.getByRole("button", { name: "This one" });
+  await expect(matches.first()).toBeVisible();
+  await matches.first().click();
+
+  // Says so outright. The panel closing used to be the only sign it worked, and
+  // once the panel stopped closing there was no sign at all.
+  await expect(page.getByText(/Now checking Spotify/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "This one" })).toHaveCount(0);
 
   // On Spotify now, with one copy of the catalogue and the heard marks intact.
   await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
