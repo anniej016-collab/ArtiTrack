@@ -104,3 +104,29 @@ test("putting it back keeps everything that was on it", async ({ page }) => {
   await expect(page.getByText("4/5")).toBeVisible();
   await expect(page.getByRole("button", { name: "Heard", exact: true })).toBeVisible();
 });
+
+test("'not their release' is nowhere near the heard tick", async ({ page }) => {
+  /*
+   * It used to sit one button along from Heard. They are nothing alike: Heard
+   * is the thing you came to the page to press, and this says the record isn't
+   * the artist's at all. A stray thumb reaching for the first should have no
+   * chance of finding the second.
+   */
+  await addArtist(page, "Testhead", { heardAlready: false });
+  await openArtist(page, "Testhead");
+  await openReleasesTab(page);
+  await openRelease(page, "Very Best Of Testhead");
+
+  // Reads "Mark heard" until it's been ticked, "Heard" after.
+  const heard = page.getByRole("button", { name: /^(Heard|Mark heard)$/ });
+  const remove = page.getByRole("button", { name: "Not their release" });
+  await expect(heard).toBeVisible();
+
+  const heardBox = await heard.boundingBox();
+  const removeBox = await remove.boundingBox();
+  expect(heardBox).not.toBeNull();
+  expect(removeBox).not.toBeNull();
+
+  // Far enough down that reaching it is a decision, not a slip.
+  expect(removeBox!.y - heardBox!.y).toBeGreaterThan(300);
+});

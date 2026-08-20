@@ -106,10 +106,6 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <ListenedToggle releaseId={release.id} listened={release.listened} />
-            <RemoveReleaseButton
-              releaseId={release.id}
-              removed={release.removedAt !== null}
-            />
             {!release.listened && (
               <SetAsideToggle
                 releaseId={release.id}
@@ -185,6 +181,19 @@ export default async function ReleasePage({ params }: PageProps<"/releases/[id]"
           </div>
         </details>
       </section>
+
+      {/* Deliberately out of reach, at the far end of the page.
+          It sat next to Heard, a tap apart, and the two are nothing alike: one
+          is the thing you came to press, the other says this record isn't the
+          artist's at all. Being easy to hit is a virtue for the first and a
+          hazard for the second, so this gets the same quiet, scrolled-to
+          treatment as deleting an artist. */}
+      <div className="flex justify-end border-t border-line pt-6">
+        <RemoveReleaseButton
+          releaseId={release.id}
+          removed={release.removedAt !== null}
+        />
+      </div>
     </div>
   );
 }
