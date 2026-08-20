@@ -27,6 +27,7 @@ import {
   searchArtistsEverywhere,
   type ProviderArtist,
   isSpotifyConfigured,
+  searchEveryService,
 } from "@/lib/providers";
 import {
   persistReleases,
@@ -258,15 +259,29 @@ export async function linkArtistForSync(
   // The first check after attaching a service is their back catalogue arriving
   // late, not new releases — flagging a twenty-year discography as news would
   // make the New releases group useless the moment it was created.
-  const result = await syncArtist(artistId, { newArrival: false });
+  /*
+   * The switch above is saved whatever happens next, and fetching from a
+   * service is the part that can fail — a refused key, a service having a
+   * moment, a catalogue that answers strangely. Letting that escape turned a
+   * link that had *already worked* into an error page, which then had to be
+   * reloaded to reveal that it had worked after all.
+   *
+   * So the failure is caught and handed back to be read. The artist is on the
+   * new service either way; only the first fetch is missing, and pressing
+   * "Check for new releases" runs it again.
+   */
+  let result: Awaited<ReturnType<typeof syncArtist>> = null;
+  let error: string | null = null;
+
+  try {
+    result = await syncArtist(artistId, { newArrival: false });
+  } catch (cause) {
+    error = cause instanceof Error ? cause.message : "Could not reach the service.";
+  }
 
   revalidatePath("/", "layout");
 
-  // Handed back so the control can say what happened. Linking used to be its
-  // own confirmation, because the whole panel vanished once an artist had a
-  // service; now that it stays available for changing service, a successful
-  // link and a link that silently failed looked exactly alike.
-  return { added: result?.added ?? 0, updated: result?.updated ?? 0 };
+  return { added: result?.added ?? 0, updated: result?.updated ?? 0, error };
 }
 
 export async function unlinkArtistFromSync(artistId: string) {
@@ -326,6 +341,37 @@ export type SearchState = {
   spotifyConfigured: boolean;
   error: string | null;
 };
+
+/**
+ * The same search, but showing every service rather than the first to answer.
+ *
+ * Used when moving an artist: which service a match comes from is the entire
+ * question there, so all of them have to be on offer.
+ */
+export async function searchServicesAction(
+  _previous: SearchState,
+  formData: FormData,
+): Promise<SearchState> {
+  const query = String(formData.get("query") ?? "").trim();
+  const spotifyConfigured = isSpotifyConfigured();
+
+  if (!query) {
+    return { query, results: [], usedFallback: false, spotifyConfigured, error: null };
+  }
+
+  try {
+    const results = await searchEveryService(query);
+    return { query, results, usedFallback: false, spotifyConfigured, error: null };
+  } catch (error) {
+    return {
+      query,
+      results: [],
+      usedFallback: false,
+      spotifyConfigured,
+      error: error instanceof Error ? error.message : "Search failed.",
+    };
+  }
+}
 
 export async function searchArtistsAction(
   _previous: SearchState,

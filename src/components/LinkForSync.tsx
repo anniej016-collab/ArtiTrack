@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import {
   linkArtistForSync,
-  searchArtistsAction,
+  searchServicesAction,
   type SearchState,
 } from "@/lib/actions";
 import { VinylIcon } from "@/components/icons";
@@ -43,7 +43,7 @@ export function LinkForSync({
   artistName: string;
   currentSource?: string | null;
 }) {
-  const [state, action, searching] = useActionState(searchArtistsAction, empty);
+  const [state, action, searching] = useActionState(searchServicesAction, empty);
   const [, startLinking] = useTransition();
   const [open, setOpen] = useState(false);
   /*
@@ -54,7 +54,11 @@ export function LinkForSync({
    * actually being used.
    */
   const [linkingId, setLinkingId] = useState<string | null>(null);
-  const [done, setDone] = useState<{ label: string; added: number } | null>(null);
+  const [done, setDone] = useState<{
+    label: string;
+    added: number;
+    error: string | null;
+  } | null>(null);
 
   if (!open) {
     return (
@@ -75,14 +79,23 @@ export function LinkForSync({
         {/* Said outright, because it used to be implied by this whole panel
             disappearing — and once it stopped disappearing, a link that worked
             and one that failed looked exactly the same. */}
-        {done && (
-          <p className="text-xs text-success">
-            Now checking {done.label}
-            {done.added > 0
-              ? ` — ${done.added} release${done.added === 1 ? "" : "s"} added.`
-              : " — nothing new to add."}
-          </p>
-        )}
+        {done &&
+          (done.error ? (
+            /* Switched, but the first fetch failed. Saying which happened
+               matters: the artist really is on the new service, and pressing
+               "Check for new releases" runs the fetch again. */
+            <p className="text-xs text-red-400">
+              Now checking {done.label}, but fetching their releases failed:{" "}
+              {done.error}
+            </p>
+          ) : (
+            <p className="text-xs text-success">
+              Now checking {done.label}
+              {done.added > 0
+                ? ` — ${done.added} release${done.added === 1 ? "" : "s"} added.`
+                : " — nothing new to add."}
+            </p>
+          ))}
       </div>
     );
   }
@@ -93,10 +106,10 @@ export function LinkForSync({
         <p className="text-sm font-medium">Which one are they?</p>
         <p className="mt-1 text-xs text-faint">
           {currentSource
-            ? `Pick the match and their releases will come from there instead of
-               ${providerLabel(currentSource)}. Everything already here stays — records
-               both services list are recognised rather than added twice, and what you
-               have marked heard is untouched.`
+            ? `Every service is searched here, so you can move them back as easily as
+               across — the badge on each match says where it is from. Everything
+               already here stays: records both services list are recognised rather
+               than added twice, and what you have marked heard is untouched.`
             : `Pick the match and new releases will arrive with the nightly check.
                What's already here stays, and anything the service also lists is
                recognised rather than added twice.`}
@@ -176,6 +189,7 @@ export function LinkForSync({
                     setDone({
                       label: providerLabel(result.source),
                       added: outcome?.added ?? 0,
+                      error: outcome?.error ?? null,
                     });
                     // Closing is the other half of saying it worked: leaving the
                     // search sitting there reads as nothing having happened.

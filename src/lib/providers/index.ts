@@ -63,6 +63,35 @@ export const TRACK_SOURCES = SYNCABLE_SOURCES.filter(
   (key) => PROVIDERS[key].fetchReleaseTracks !== undefined,
 );
 
+/**
+ * Every service's matches at once, each labelled with where it came from.
+ *
+ * For moving an artist between services, where stopping at the first that
+ * answers is exactly wrong: an artist already on Spotify would only ever be
+ * offered Spotify again, so there is no way back to Deezer. Adding an artist
+ * still takes the first answer — there, one good match is the point and three
+ * lists of the same person is a choice nobody wants.
+ *
+ * A service that fails is left out rather than taking the others with it.
+ */
+export async function searchEveryService(query: string): Promise<ProviderArtist[]> {
+  const sources: ProviderKey[] = spotify.isConfigured()
+    ? ["spotify", "deezer", "musicbrainz"]
+    : ["deezer", "musicbrainz"];
+
+  const found = await Promise.all(
+    sources.map(async (key) => {
+      try {
+        return await PROVIDERS[key].searchArtists(query);
+      } catch {
+        return [];
+      }
+    }),
+  );
+
+  return found.flat();
+}
+
 /** Whether Spotify has credentials. Without them the search skips it silently. */
 export function isSpotifyConfigured(): boolean {
   return spotify.isConfigured();

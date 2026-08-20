@@ -133,3 +133,48 @@ test("says so when Spotify was skipped for want of credentials", async ({ page }
   await expect(page.locator("li").filter({ hasText: "Testhead" }).first()).toBeVisible();
   await expect(page.getByText(/Spotify isn't set up/)).toHaveCount(0);
 });
+
+test("moving an artist offers every service, not just the one they are on", async ({
+  page,
+}) => {
+  /*
+   * Search normally stops at the first service that answers, which is right for
+   * adding an artist and exactly wrong for moving one: an artist already on
+   * Spotify was only ever offered Spotify again, so there was no way back to
+   * Deezer.
+   */
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await openArtist(page, "Testhead");
+  await expect(page.getByText(/Releases come from Spotify/)).toBeVisible();
+
+  await page.getByRole("button", { name: /Check a different service/ }).click();
+  await page.getByRole("button", { name: "Search" }).click();
+
+  const panel = page.locator("div.panel").filter({ hasText: "Which one are they?" });
+  await expect(panel.getByText("Spotify", { exact: true }).first()).toBeVisible();
+  await expect(panel.getByText("Deezer", { exact: true }).first()).toBeVisible();
+});
+
+test("a service that fails on the first fetch says so instead of erroring out", async ({
+  page,
+}) => {
+  /*
+   * The switch is saved before the fetch runs, so letting the fetch throw
+   * turned a link that had already worked into an error page — which had to be
+   * reloaded to discover it had worked after all.
+   */
+  await addArtist(page, "Testhead", { heardAlready: true });
+  await openArtist(page, "Testhead");
+
+  // Every outbound call to the service fails from here on.
+  await page.route("**/spotify/**", (route) => route.abort());
+
+  await page.getByRole("button", { name: /Check a different service/ }).click();
+  await page.getByRole("button", { name: "Search" }).click();
+  const match = page.getByRole("button", { name: "This one" }).first();
+  await expect(match).toBeVisible();
+  await match.click();
+
+  // Still the artist page, with the reason on it rather than an error screen.
+  await expect(page.getByRole("heading", { name: "Testhead", level: 1 })).toBeVisible();
+});
