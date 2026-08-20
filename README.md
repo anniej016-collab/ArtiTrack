@@ -261,7 +261,13 @@ than anyone's login — nothing here reads a user's account, only the public cat
 3. From the app's **Settings**, copy the **Client ID** and **Client secret** into the
    project's environment variables as `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`.
 
-Leave them unset and nothing breaks: Spotify is skipped and Deezer answers instead. That
+Leave them unset and nothing breaks, but the app says so rather than leaving you to
+guess: every search result carries the service it came from, and a line under the
+results names the two missing variables. Silence there is worse than it sounds — someone
+reaching for Spotify gets Deezer results that look perfectly good, picks one, and cannot
+work out why nothing changed.
+
+Spotify is skipped and Deezer answers instead. That
 is also what the tests do — `e2e/mock-provider.mjs` serves Spotify's shapes alongside the
 others, so none of this needs the real service.
 

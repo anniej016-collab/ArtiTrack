@@ -8,11 +8,13 @@ import {
   type SearchState,
 } from "@/lib/actions";
 import { CheckIcon, VinylIcon } from "@/components/icons";
+import { SourceBadge, SpotifySkippedNote } from "@/components/SearchSourceNote";
 
 const emptySearch: SearchState = {
   query: "",
   results: [],
   usedFallback: false,
+  spotifyConfigured: true,
   error: null,
 };
 const emptyImport: ImportState = { message: null, error: null };
@@ -134,6 +136,10 @@ export function ArtistSearch({
           <p className="text-sm text-faint">No artists found for “{state.query}”.</p>
         )}
 
+      {!finished && state.results.length > 0 && (
+        <SpotifySkippedNote configured={state.spotifyConfigured} />
+      )}
+
       {!finished && state.usedFallback && state.results.length > 0 && (
         <p className="text-xs text-faint">
           Not on Deezer, so these come from MusicBrainz instead — releases only, no
@@ -162,7 +168,10 @@ export function ArtistSearch({
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{artist.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-medium">{artist.name}</p>
+                    <SourceBadge source={artist.source} />
+                  </div>
                   {artist.albumCount !== null && (
                     <p className="text-xs text-faint">
                       {artist.albumCount} release{artist.albumCount === 1 ? "" : "s"}

@@ -8,8 +8,15 @@ import {
 } from "@/lib/actions";
 import { VinylIcon } from "@/components/icons";
 import { providerLabel } from "@/lib/providers";
+import { SourceBadge, SpotifySkippedNote } from "@/components/SearchSourceNote";
 
-const empty: SearchState = { query: "", results: [], usedFallback: false, error: null };
+const empty: SearchState = {
+  query: "",
+  results: [],
+  usedFallback: false,
+  spotifyConfigured: true,
+  error: null,
+};
 
 /**
  * Attaches an artist already in the library to a music service, or moves them
@@ -115,6 +122,10 @@ export function LinkForSync({
 
       {state.error && <p className="text-sm text-red-400">{state.error}</p>}
 
+      {state.results.length > 0 && (
+        <SpotifySkippedNote configured={state.spotifyConfigured} />
+      )}
+
       {state.query && !searching && state.results.length === 0 && !state.error && (
         <p className="text-sm text-faint">Nothing found for “{state.query}”.</p>
       )}
@@ -140,7 +151,10 @@ export function LinkForSync({
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-sm">{result.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm">{result.name}</p>
+                    <SourceBadge source={result.source} />
+                  </div>
                   {result.albumCount !== null && (
                     <p className="text-xs text-faint">{result.albumCount} releases</p>
                   )}

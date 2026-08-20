@@ -63,6 +63,11 @@ export const TRACK_SOURCES = SYNCABLE_SOURCES.filter(
   (key) => PROVIDERS[key].fetchReleaseTracks !== undefined,
 );
 
+/** Whether Spotify has credentials. Without them the search skips it silently. */
+export function isSpotifyConfigured(): boolean {
+  return spotify.isConfigured();
+}
+
 export function providerLabel(source: string): string {
   return getProvider(source)?.label ?? source;
 }

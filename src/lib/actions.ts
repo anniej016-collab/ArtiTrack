@@ -26,6 +26,7 @@ import {
   getProvider,
   searchArtistsEverywhere,
   type ProviderArtist,
+  isSpotifyConfigured,
 } from "@/lib/providers";
 import {
   persistReleases,
@@ -314,6 +315,15 @@ export type SearchState = {
   results: ProviderArtist[];
   /** Set when the results came from the fallback source, which is worth saying. */
   usedFallback: boolean;
+  /**
+   * Whether Spotify is set up at all.
+   *
+   * Without credentials the search skips it and Deezer answers instead — which
+   * is the right behaviour and completely invisible, so someone who came here
+   * specifically to reach Spotify gets Deezer results, picks one, and cannot
+   * work out why nothing changed.
+   */
+  spotifyConfigured: boolean;
   error: string | null;
 };
 
@@ -322,16 +332,21 @@ export async function searchArtistsAction(
   formData: FormData,
 ): Promise<SearchState> {
   const query = String(formData.get("query") ?? "").trim();
-  if (!query) return { query, results: [], usedFallback: false, error: null };
+  const spotifyConfigured = isSpotifyConfigured();
+
+  if (!query) {
+    return { query, results: [], usedFallback: false, spotifyConfigured, error: null };
+  }
 
   try {
     const { results, usedFallback } = await searchArtistsEverywhere(query);
-    return { query, results, usedFallback, error: null };
+    return { query, results, usedFallback, spotifyConfigured, error: null };
   } catch (error) {
     return {
       query,
       results: [],
       usedFallback: false,
+      spotifyConfigured,
       error: error instanceof Error ? error.message : "Search failed.",
     };
   }

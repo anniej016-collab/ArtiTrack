@@ -107,3 +107,29 @@ test("an artist already on a service can be moved to another one", async ({ page
   await expect(page.locator("#following").getByText("Testhead")).toHaveCount(1);
   await expect(page.locator("#to-listen li")).toHaveCount(0);
 });
+
+test("every match says which service it came from", async ({ page }) => {
+  /*
+   * Search tries Spotify, then Deezer, then MusicBrainz, and shows whichever
+   * answers first — sensible, and until now silent. Someone reaching for
+   * Spotify could be handed Deezer results, pick one, and have no way to work
+   * out why nothing changed.
+   */
+  await page.goto("/");
+  await page.fill('input[name="query"]', "Testhead");
+  await page.getByRole("button", { name: "Search" }).click();
+
+  const row = page.locator("li").filter({ hasText: "Testhead" }).first();
+  await expect(row.getByText("Spotify", { exact: true })).toBeVisible();
+});
+
+test("says so when Spotify was skipped for want of credentials", async ({ page }) => {
+  // Nothing here can unset the server's credentials, so the note is checked
+  // where it is decided: absent when configured, which is this suite's state.
+  await page.goto("/");
+  await page.fill('input[name="query"]', "Testhead");
+  await page.getByRole("button", { name: "Search" }).click();
+
+  await expect(page.locator("li").filter({ hasText: "Testhead" }).first()).toBeVisible();
+  await expect(page.getByText(/Spotify isn't set up/)).toHaveCount(0);
+});
